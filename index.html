@@ -123,26 +123,15 @@
     .sheet-url-text { font-size: 0.7rem; color: #64748b; word-break: break-all; }
     .sheet-actions { display: flex; gap: 6px; align-items: center; }
 
-    /* ========== MOBILE RESPONSIVE ========== */
     @media (max-width: 768px) {
       .main-container { grid-template-columns: 1fr; }
-      .sidebar {
-        display: flex; flex-wrap: wrap; gap: 6px;
-        position: static; padding: 10px; justify-content: center; border-radius: 12px;
-      }
-      .nav-item { padding: 6px 10px; font-size: 0.78rem; border-radius: 6px; }
+      .sidebar { display: flex; flex-wrap: wrap; gap: 6px; position: static; padding: 10px; justify-content: center; }
+      .nav-item { padding: 6px 10px; font-size: 0.78rem; }
       .header-content { flex-direction: column; align-items: flex-start; }
-      .logo { font-size: 1rem; }
       .card { padding: 14px; }
       .page-grid { grid-template-columns: 1fr; }
       .btn { padding: 6px 12px; font-size: 0.8rem; }
       .btn-submit { font-size: 1rem; padding: 14px 20px; }
-      .quick-post-panel { padding: 16px; }
-      .page-select-card { padding: 10px; }
-      input, select, textarea { padding: 8px 10px; font-size: 0.85rem; }
-      .modal { padding: 20px; }
-      .sheet-item { flex-direction: column; align-items: flex-start; }
-      .sheet-actions { width: 100%; justify-content: flex-end; }
     }
   </style>
 </head>
@@ -153,7 +142,7 @@
 <!-- Login -->
 <div id="loginScreen" class="login-container">
   <div class="login-box">
-    <div class="login-logo"><h1>🔐 FB Auction Pro v10.2</h1><p style="color:#64748b;">Permanent Firebase Storage</p></div>
+    <div class="login-logo"><h1>🔐 FB Auction Pro v10.2</h1><p style="color:#64748b;">Firebase – Save on your actions only</p></div>
     <div class="input-group"><label>📱 Phone</label><input type="tel" id="loginPhone" value="01700000000" maxlength="11"></div>
     <div class="input-group"><label>🔒 Password</label><input type="password" id="loginPassword" value="admin123"></div>
     <button class="login-btn" onclick="handleLogin()">🔓 Login</button>
@@ -218,7 +207,6 @@ const Toast = {
   success(m,d){this.show(m,'success',d);}, error(m,d){this.show(m,'error',d||10000);}, warning(m,d){this.show(m,'warning',d);}, info(m,d){this.show(m,'info',d);}
 };
 
-// Custom confirmation toast (replaces browser confirm dialog)
 function confirmToast(msg) {
   return new Promise((resolve) => {
     const toast = document.createElement('div');
@@ -228,11 +216,8 @@ function confirmToast(msg) {
     toast.style.justifyContent = 'space-between';
     toast.innerHTML = `<span>${msg}</span><div style="display:flex;gap:8px;margin-left:12px;"><button class="btn btn-sm btn-danger" id="confirmYes">Yes</button><button class="btn btn-sm btn-outline" id="confirmNo">No</button></div>`;
     document.getElementById('toastContainer').appendChild(toast);
-    const yesBtn = toast.querySelector('#confirmYes');
-    const noBtn = toast.querySelector('#confirmNo');
-    yesBtn.onclick = () => { toast.remove(); resolve(true); };
-    noBtn.onclick = () => { toast.remove(); resolve(false); };
-    // Auto-dismiss after 10 seconds (resolves false)
+    toast.querySelector('#confirmYes').onclick = () => { toast.remove(); resolve(true); };
+    toast.querySelector('#confirmNo').onclick = () => { toast.remove(); resolve(false); };
     setTimeout(() => { if (toast.parentNode) { toast.remove(); resolve(false); } }, 10000);
   });
 }
@@ -297,30 +282,30 @@ function advanceCell(page) { const col = page.currentCell.charAt(0); page.curren
 let quickPostType = 'text'; let quickPostTextContent = '';
 function renderQuickPostView() {
   document.getElementById('contentArea').innerHTML = `
-    <div class="quick-post-panel"><h3>⚡ Quick Manual Post</h3><p style="color:#64748b;margin-bottom:16px;">Write text, select page, click SUBMIT → Posted!</p><p style="color:#94a3b8;font-size:0.8rem;margin-bottom:12px;">⚠️ Quick Post content is temporary and will not be saved.</p>
-      <label style="font-weight:700;margin-bottom:8px;display:block;">📄 Select Page:</label><div style="margin-bottom:16px;">
-        ${APP.pages.length === 0 ? '<p style="color:#dc2626;">❌ No pages! Add a page first from 📄 Pages menu.</p>' : APP.pages.map(p => `<div class="page-select-card ${APP.selectedQuickPage === p.id ? 'selected' : ''}" onclick="selectQuickPage('${p.id}')"><div class="radio"></div><div><strong>📘 ${p.name}</strong><span style="font-size:0.8rem;color:#64748b;margin-left:8px;">📍 ${p.currentCell||'A1'} | 📊 ${p.stats?.posts||0} posts</span></div></div>`).join('')}
+    <div class="quick-post-panel"><h3>⚡ Quick Manual Post</h3><p style="color:#64748b;">Write text, select page, click SUBMIT → Posted!</p>
+      <label style="font-weight:700;">📄 Select Page:</label><div style="margin-bottom:16px;">
+        ${APP.pages.length === 0 ? '<p style="color:#dc2626;">No pages! Add a page first.</p>' : APP.pages.map(p => `<div class="page-select-card ${APP.selectedQuickPage === p.id ? 'selected' : ''}" onclick="selectQuickPage('${p.id}')"><div class="radio"></div><div><strong>📘 ${p.name}</strong> <span style="font-size:0.8rem;color:#64748b;">📍 ${p.currentCell||'A1'} | 📊 ${p.stats?.posts||0}</span></div></div>`).join('')}
       </div>
-      ${APP.selectedQuickPage ? `<label style="font-weight:700;margin-bottom:8px;display:block;">📌 Post Type:</label><div class="post-type-selector"><div class="post-type-btn ${quickPostType==='text'?'active':''}" onclick="quickPostType='text';renderQuickPostView();">📝 Write Text</div><div class="post-type-btn ${quickPostType==='cell'?'active':''}" onclick="quickPostType='cell';renderQuickPostView();">📋 Use Cell</div><div class="post-type-btn ${quickPostType==='photo'?'active':''}" onclick="quickPostType='photo';renderQuickPostView();">🖼️ Photo</div></div>
-      ${quickPostType==='text' ? `<div style="margin-bottom:16px;"><label style="font-weight:700;">📝 Your Post Text:</label><textarea id="quickPostText" rows="5" placeholder="Write your post here...">${quickPostTextContent}</textarea><div style="text-align:right;font-size:0.8rem;color:#94a3b8;"><span id="quickCharCount">${quickPostTextContent.length}</span> chars</div><div style="font-size:0.7rem;color:#94a3b8;margin-top:4px;">⚠️ This text is temporary and will not be saved</div></div>` : ''}
-      ${quickPostType==='cell' ? `<div style="margin-bottom:16px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px;"><strong>📋 Cell ${(()=>{const p=APP.pages.find(x=>x.id===APP.selectedQuickPage);return p?p.currentCell||'A1':'A1';})()}:</strong><br><span style="font-size:1rem;">${(()=>{const p=APP.pages.find(x=>x.id===APP.selectedQuickPage);return p?getCell(p.sheetName,p.currentCell||'A1')||'(Empty)':'(No page)';})()}</span></div>` : ''}
-      ${quickPostType==='photo' ? `<div style="margin-bottom:16px;"><label style="font-weight:700;">🖼️ Photo URL:</label><input id="quickPhotoUrl" placeholder="https://example.com/image.jpg"><label style="font-weight:700;margin-top:8px;">📝 Caption (optional):</label><textarea id="quickPhotoCaption" rows="3" placeholder="Caption..."></textarea></div>` : ''}
-      <button class="btn btn-submit btn-block" id="quickSubmitBtn" onclick="executeQuickPost()" style="font-size:1.2rem;padding:18px;">🚀 SUBMIT - POST TO FACEBOOK NOW</button>` : '<div style="text-align:center;padding:20px;color:#94a3b8;">👆 Select a page above to start posting</div>'}
-      ${APP.selectedQuickPage ? `<div style="text-align:center;margin-top:10px;font-size:0.8rem;color:#64748b;">⚡ Posting to: <strong>${APP.pages.find(p=>p.id===APP.selectedQuickPage)?.name||'?'}</strong></div>` : ''}
+      ${APP.selectedQuickPage ? `
+      <div class="post-type-selector"><div class="post-type-btn ${quickPostType==='text'?'active':''}" onclick="quickPostType='text';renderQuickPostView();">📝 Write Text</div><div class="post-type-btn ${quickPostType==='cell'?'active':''}" onclick="quickPostType='cell';renderQuickPostView();">📋 Use Cell</div></div>
+      ${quickPostType==='text' ? `<textarea id="quickPostText" rows="5" placeholder="Write your post...">${quickPostTextContent}</textarea><div style="text-align:right;font-size:0.8rem;color:#94a3b8;"><span id="quickCharCount">${quickPostTextContent.length}</span> chars</div>` : ''}
+      ${quickPostType==='cell' ? `<div style="background:#f0fdf4;padding:14px;border-radius:10px;"><strong>📋 Cell ${APP.pages.find(p=>p.id===APP.selectedQuickPage)?.currentCell||'A1'}:</strong><br>${getCell(APP.pages.find(p=>p.id===APP.selectedQuickPage)?.sheetName, APP.pages.find(p=>p.id===APP.selectedQuickPage)?.currentCell||'A1')||'(Empty)'}</div>` : ''}
+      <button class="btn btn-submit btn-block" id="quickSubmitBtn" onclick="executeQuickPost()" style="margin-top:16px;">🚀 SUBMIT - POST TO FACEBOOK NOW</button>
+      ` : '<div style="text-align:center;padding:20px;color:#94a3b8;">👆 Select a page above</div>'}
     </div>`;
   setTimeout(() => { const ta = document.getElementById('quickPostText'); if (ta) ta.addEventListener('input', function() { quickPostTextContent = this.value; document.getElementById('quickCharCount').textContent = this.value.length; }); }, 100);
 }
-function selectQuickPage(pageId) { APP.selectedQuickPage = pageId; saveState(); renderQuickPostView(); }
+function selectQuickPage(pageId) { APP.selectedQuickPage = pageId; renderQuickPostView(); }
 async function executeQuickPost() {
-  if (!APP.selectedQuickPage) { Toast.error('Select a page first!'); return; }
+  if (!APP.selectedQuickPage) { Toast.error('Select a page!'); return; }
   const page = APP.pages.find(p => p.id === APP.selectedQuickPage); if (!page) return;
-  const btn = document.getElementById('quickSubmitBtn'); if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Posting... Please wait...'; btn.style.background = '#94a3b8'; }
+  const btn = document.getElementById('quickSubmitBtn'); if (btn) { btn.disabled = true; btn.textContent = '⏳...'; btn.style.background = '#94a3b8'; }
   try {
-    if (quickPostType === 'text') { const msg = document.getElementById('quickPostText').value.trim(); if (!msg) { Toast.error('Write some text!'); if (btn) { btn.disabled = false; btn.innerHTML = '🚀 SUBMIT - POST TO FACEBOOK NOW'; btn.style.background = 'linear-gradient(135deg, #059669, #10b981)'; } return; } await postToFacebook(page.token, msg, page.pageId); }
-    else if (quickPostType === 'cell') { const cell = page.currentCell || 'A1'; try { await fetchSheet(page.sheetName); } catch(e){} const msg = getCell(page.sheetName, cell); if (!msg) { Toast.error('Cell is empty!'); if (btn) { btn.disabled = false; btn.innerHTML = '🚀 SUBMIT'; btn.style.background = 'linear-gradient(135deg, #059669, #10b981)'; } return; } await postToFacebook(page.token, msg, page.pageId); advanceCell(page); }
-    else if (quickPostType === 'photo') { const url = document.getElementById('quickPhotoUrl').value.trim(); const cap = document.getElementById('quickPhotoCaption').value.trim(); if (!url) { Toast.error('Enter photo URL!'); if (btn) { btn.disabled = false; btn.innerHTML = '🚀 SUBMIT'; btn.style.background = 'linear-gradient(135deg, #059669, #10b981)'; } return; } await postPhotoToFacebook(page.token, cap, url, page.pageId); }
-    page.stats.posts = (page.stats.posts||0) + 1; page.stats.lastPost = new Date().toISOString(); saveState(); addLog('✅ Quick post success!','success'); Toast.success('✅ Posted successfully!'); quickPostTextContent = ''; renderQuickPostView();
-  } catch (e) { addLog(`❌ ${e.message}`,'error'); Toast.error(e.message, 15000); if (btn) { btn.disabled = false; btn.innerHTML = '🚀 SUBMIT - POST TO FACEBOOK NOW'; btn.style.background = 'linear-gradient(135deg, #059669, #10b981)'; } }
+    let msg = '';
+    if (quickPostType === 'text') { msg = document.getElementById('quickPostText').value.trim(); if (!msg) { Toast.error('Write text!'); if (btn) { btn.disabled = false; btn.textContent = '🚀 SUBMIT'; btn.style.background = 'linear-gradient(135deg, #059669, #10b981)'; } return; } await postToFacebook(page.token, msg, page.pageId); }
+    else if (quickPostType === 'cell') { const cell = page.currentCell || 'A1'; try { await fetchSheet(page.sheetName); } catch(e){} msg = getCell(page.sheetName, cell); if (!msg) { Toast.error('Cell empty!'); if (btn) { btn.disabled = false; btn.textContent = '🚀 SUBMIT'; btn.style.background = 'linear-gradient(135deg, #059669, #10b981)'; } return; } await postToFacebook(page.token, msg, page.pageId); advanceCell(page); }
+    page.stats.posts = (page.stats.posts||0) + 1; saveState(); addLog('✅ Quick post!','success'); Toast.success('✅ Posted!'); quickPostTextContent = ''; renderQuickPostView();
+  } catch (e) { addLog('❌ '+e.message,'error'); Toast.error(e.message, 15000); if (btn) { btn.disabled = false; btn.textContent = '🚀 SUBMIT'; btn.style.background = 'linear-gradient(135deg, #059669, #10b981)'; } }
 }
 
 // ==================== SCHEDULER ====================
@@ -363,13 +348,7 @@ function toggleEditMode(pid) { const fields = ['epName','epToken','epSheet','epC
 function savePageEdit(pid) { const p = APP.pages.find(x=>x.id===pid); if(!p) return; const newName = document.getElementById('epName').value.trim(); const newToken = document.getElementById('epToken').value.trim(); const newSheet = document.getElementById('epSheet').value; const newCell = document.getElementById('epCell').value.trim()||'A1'; if(!newName) { Toast.error('Page name required!'); return; } p.name = newName; p.token = newToken; p.sheetName = newSheet; p.currentCell = newCell; saveState(); Toast.success('✅ Page updated!'); toggleEditMode(pid); openPageDetail(pid); }
 async function deletePage(pid) {
   const confirmed = await confirmToast('⚠️ Delete this page permanently?');
-  if (confirmed) {
-    APP.pages = APP.pages.filter(p=>p.id!==pid);
-    saveState();
-    document.getElementById('pageModal').style.display='none';
-    renderDashboard();
-    Toast.warning('🗑️ Page deleted!');
-  }
+  if (confirmed) { APP.pages = APP.pages.filter(p=>p.id!==pid); saveState(); document.getElementById('pageModal').style.display='none'; renderDashboard(); Toast.warning('🗑️ Page deleted!'); }
 }
 async function checkAndSaveToken(pageId) { const page = APP.pages.find(p => p.id === pageId); if (!page) return; Toast.info('Checking token...'); const r = await checkTokenDetails(page.token);
   document.getElementById('pageModalContent').innerHTML = `<h3>🧪 Token Check</h3><div style="background:${r.isPageToken?'#f0fdf4':'#fef2f2'};padding:14px;border-radius:10px;margin:10px 0;"><strong>Type:</strong> ${r.type}<br><strong>Page:</strong> ${r.pageName||'?'}<br><strong>Can Post:</strong> ${r.canPost?'✅ YES':'❌ NO'}</div>${r.errors.map(e=>`<div>❌ ${e}</div>`).join('')}<button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="document.getElementById('pageModal').style.display='none'">Close</button>`; document.getElementById('pageModal').style.display = 'flex'; if (r.pageId) { page.pageId = r.pageId; saveState(); } }
@@ -388,11 +367,7 @@ function renderSheetsView() { const sheetNames = Object.keys(APP.sheets);
   document.getElementById('contentArea').innerHTML = `<div class="card"><div class="card-header">📋 Sheets <button class="btn btn-primary btn-sm" onclick="showAddSheet()">➕ Add Sheet</button></div>
     ${sheetNames.length === 0 ? '<p style="color:#94a3b8;text-align:center;padding:20px;">No sheets added. Click "Add Sheet" to connect.</p>' : sheetNames.map(n => { const sheet = APP.sheets[n]; return `
     <div class="sheet-item">
-      <div class="sheet-info">
-        <div class="sheet-name">📋 ${n}</div>
-        <div class="sheet-url-text">${sheet.url}</div>
-        <div style="font-size:0.7rem;color:#94a3b8;">Rows: ${sheet.data?.rows?.length || 0} | Last fetch: ${sheet.lastFetched ? new Date(sheet.lastFetched).toLocaleString() : 'Never'}</div>
-      </div>
+      <div class="sheet-info"><div class="sheet-name">📋 ${n}</div><div class="sheet-url-text">${sheet.url}</div></div>
       <div class="sheet-actions">
         <button class="btn btn-sm btn-outline" onclick="editSheet('${n}')">✏️ Edit</button>
         <button class="btn btn-sm btn-danger" onclick="removeSheet('${n}')">🗑️ Remove</button>
@@ -404,17 +379,11 @@ function updateSheet(oldName) { const newName = document.getElementById('esName'
 async function addSheet() { const n = document.getElementById('nsName').value.trim(); const u = document.getElementById('nsUrl').value.trim(); if(!n||!u) { Toast.error('Name and URL required!'); return; } APP.sheets[n] = {url: u, data: {rows: []}}; try { await fetchSheet(n); } catch(e) {} saveState(); document.getElementById('addSheetForm')?.remove(); renderSheetsView(); Toast.success('✅ Sheet saved!'); }
 async function removeSheet(n) {
   const confirmed = await confirmToast(`⚠️ Delete sheet "${n}" permanently?`);
-  if (confirmed) {
-    delete APP.sheets[n];
-    saveState();
-    renderSheetsView();
-    Toast.warning('🗑️ Sheet removed!');
-  }
+  if (confirmed) { delete APP.sheets[n]; saveState(); renderSheetsView(); Toast.warning('🗑️ Sheet removed!'); }
 }
 
 // ==================== OTHER VIEWS ====================
-function renderHelpView(){ document.getElementById('contentArea').innerHTML = `<div class="card"><div class="card-header">❓ How to Get Facebook PAGE Token</div><div class="token-help"><strong>🔑 Error #200 Fix:</strong> You're using a USER token. You need a PAGE token!</div><ol style="line-height:2.2;padding-left:20px;"><li>Go to <a href="https://developers.facebook.com/tools/explorer/" target="_blank">Graph API Explorer</a></li><li>Click <strong>Generate Access Token</strong></li><li>Check: <code>pages_manage_posts</code> + <code>pages_read_engagement</code></li><li>Then: <strong>Get Token → Get Page Access Token</strong></li><li>Select your Page → Copy PAGE token (EAAB...)</li><li>Paste in app → 🧪 Check</li></ol></div><div class="card"><div class="card-header">📋 Google Sheets Setup</div><ol style="line-height:2.2;padding-left:20px;"><li>Create a Google Sheet with your content</li><li>Go to <strong>File → Share → Publish to web</strong></li><li>Select <strong>CSV</strong> format</li><li>https://docs.google.com/spreadsheets/d/[Sheet ID]/export?format=csv&gid=[Gid-Number]
-</li><li>Copy the URL and paste in Sheets section</li><li>Or use the direct sheet URL with proper sharing</li></ol></div>`; }
+function renderHelpView(){ document.getElementById('contentArea').innerHTML = `<div class="card"><div class="card-header">❓ How to Get Facebook PAGE Token</div><div class="token-help"><strong>🔑 Error #200 Fix:</strong> You're using a USER token. You need a PAGE token!</div><ol style="line-height:2.2;padding-left:20px;"><li>Go to <a href="https://developers.facebook.com/tools/explorer/" target="_blank">Graph API Explorer</a></li><li>Click <strong>Generate Access Token</strong></li><li>Check: <code>pages_manage_posts</code> + <code>pages_read_engagement</code></li><li>Then: <strong>Get Token → Get Page Access Token</strong></li><li>Select your Page → Copy PAGE token (EAAB...)</li><li>Paste in app → 🧪 Check</li></ol></div><div class="card"><div class="card-header">📋 Google Sheets Setup</div><ol style="line-height:2.2;padding-left:20px;"><li>Create a Google Sheet with your content</li><li>Go to <strong>File → Share → Publish to web</strong></li><li>Select <strong>CSV</strong> format</li><li>Copy the URL and paste in Sheets section</li></ol></div>`; }
 function renderScheduleView(){ document.getElementById('contentArea').innerHTML = `<div class="card"><div class="card-header">⏰ Schedules</div>${APP.pages.map(p=>`<div><strong>📘 ${p.name}</strong>${(p.schedules||[]).map(s=>`<div>⏰ ${s.time} ${s.enabled?'✅':'⏸️'}</div>`).join('')}</div>`).join('')}</div>`; }
 function renderLogsView(){ document.getElementById('contentArea').innerHTML = `<div class="card"><div class="card-header">📝 Logs (24h)</div><div class="log-container" style="max-height:500px;">${APP.logs.map(l=>`<div class="log-entry"><span class="${l.type==='success'?'log-success':'log-error'}">${new Date(l.time).toLocaleTimeString()} - ${l.msg}</span></div>`).join('')}</div></div>`; }
 function renderPagesView(){ document.getElementById('contentArea').innerHTML = `<div class="card"><div class="card-header">📄 Pages <button class="btn btn-primary btn-sm" onclick="showAddPage()">➕</button></div>${APP.pages.map(p=>`<div class="page-card" onclick="openPageDetail('${p.id}')"><strong>📘 ${p.name}</strong><div>📍 ${p.currentCell||'A1'} | 📊 ${p.stats?.posts||0} | 📋 ${p.sheetName}</div></div>`).join('')||'<p>No pages</p>'}</div>`; }
@@ -430,7 +399,7 @@ async function initApp() {
   if(APP.autoInterval) clearInterval(APP.autoInterval);
   APP.autoInterval = setInterval(checkSchedules, 30000);
   setInterval(() => { document.getElementById('clockDisplay').textContent = new Date().toLocaleTimeString('en-US',{hour12:false}); }, 1000);
-  setInterval(() => { if(_fbReady) _fbSave(); }, 15000);
+  // ❗️ NO auto-save interval – data is saved only on your explicit actions (create, edit, delete, post)
   window.addEventListener('beforeunload', () => { if(_fbReady) _fbSave(); });
 }
 
