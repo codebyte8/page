@@ -297,30 +297,30 @@ function advanceCell(page) { const col = page.currentCell.charAt(0); page.curren
 let quickPostType = 'text'; let quickPostTextContent = '';
 function renderQuickPostView() {
   document.getElementById('contentArea').innerHTML = `
-    <div class="quick-post-panel"><h3>⚡ Quick Manual Post</h3><p style="color:#64748b;">Write text, select page, click SUBMIT → Posted!</p>
-      <label style="font-weight:700;">📄 Select Page:</label><div style="margin-bottom:16px;">
-        ${APP.pages.length === 0 ? '<p style="color:#dc2626;">No pages! Add a page first.</p>' : APP.pages.map(p => `<div class="page-select-card ${APP.selectedQuickPage === p.id ? 'selected' : ''}" onclick="selectQuickPage('${p.id}')"><div class="radio"></div><div><strong>📘 ${p.name}</strong> <span style="font-size:0.8rem;color:#64748b;">📍 ${p.currentCell||'A1'} | 📊 ${p.stats?.posts||0}</span></div></div>`).join('')}
+    <div class="quick-post-panel"><h3>⚡ Quick Manual Post</h3><p style="color:#64748b;margin-bottom:16px;">Write text, select page, click SUBMIT → Posted!</p><p style="color:#94a3b8;font-size:0.8rem;margin-bottom:12px;">⚠️ Quick Post content is temporary and will not be saved.</p>
+      <label style="font-weight:700;margin-bottom:8px;display:block;">📄 Select Page:</label><div style="margin-bottom:16px;">
+        ${APP.pages.length === 0 ? '<p style="color:#dc2626;">❌ No pages! Add a page first from 📄 Pages menu.</p>' : APP.pages.map(p => `<div class="page-select-card ${APP.selectedQuickPage === p.id ? 'selected' : ''}" onclick="selectQuickPage('${p.id}')"><div class="radio"></div><div><strong>📘 ${p.name}</strong><span style="font-size:0.8rem;color:#64748b;margin-left:8px;">📍 ${p.currentCell||'A1'} | 📊 ${p.stats?.posts||0} posts</span></div></div>`).join('')}
       </div>
-      ${APP.selectedQuickPage ? `
-      <div class="post-type-selector"><div class="post-type-btn ${quickPostType==='text'?'active':''}" onclick="quickPostType='text';renderQuickPostView();">📝 Write Text</div><div class="post-type-btn ${quickPostType==='cell'?'active':''}" onclick="quickPostType='cell';renderQuickPostView();">📋 Use Cell</div></div>
-      ${quickPostType==='text' ? `<textarea id="quickPostText" rows="5" placeholder="Write your post...">${quickPostTextContent}</textarea><div style="text-align:right;font-size:0.8rem;color:#94a3b8;"><span id="quickCharCount">${quickPostTextContent.length}</span> chars</div>` : ''}
-      ${quickPostType==='cell' ? `<div style="background:#f0fdf4;padding:14px;border-radius:10px;"><strong>📋 Cell ${APP.pages.find(p=>p.id===APP.selectedQuickPage)?.currentCell||'A1'}:</strong><br>${getCell(APP.pages.find(p=>p.id===APP.selectedQuickPage)?.sheetName, APP.pages.find(p=>p.id===APP.selectedQuickPage)?.currentCell||'A1')||'(Empty)'}</div>` : ''}
-      <button class="btn btn-submit btn-block" id="quickSubmitBtn" onclick="executeQuickPost()" style="margin-top:16px;">🚀 SUBMIT - POST TO FACEBOOK NOW</button>
-      ` : '<div style="text-align:center;padding:20px;color:#94a3b8;">👆 Select a page above</div>'}
+      ${APP.selectedQuickPage ? `<label style="font-weight:700;margin-bottom:8px;display:block;">📌 Post Type:</label><div class="post-type-selector"><div class="post-type-btn ${quickPostType==='text'?'active':''}" onclick="quickPostType='text';renderQuickPostView();">📝 Write Text</div><div class="post-type-btn ${quickPostType==='cell'?'active':''}" onclick="quickPostType='cell';renderQuickPostView();">📋 Use Cell</div><div class="post-type-btn ${quickPostType==='photo'?'active':''}" onclick="quickPostType='photo';renderQuickPostView();">🖼️ Photo</div></div>
+      ${quickPostType==='text' ? `<div style="margin-bottom:16px;"><label style="font-weight:700;">📝 Your Post Text:</label><textarea id="quickPostText" rows="5" placeholder="Write your post here...">${quickPostTextContent}</textarea><div style="text-align:right;font-size:0.8rem;color:#94a3b8;"><span id="quickCharCount">${quickPostTextContent.length}</span> chars</div><div style="font-size:0.7rem;color:#94a3b8;margin-top:4px;">⚠️ This text is temporary and will not be saved</div></div>` : ''}
+      ${quickPostType==='cell' ? `<div style="margin-bottom:16px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px;"><strong>📋 Cell ${(()=>{const p=APP.pages.find(x=>x.id===APP.selectedQuickPage);return p?p.currentCell||'A1':'A1';})()}:</strong><br><span style="font-size:1rem;">${(()=>{const p=APP.pages.find(x=>x.id===APP.selectedQuickPage);return p?getCell(p.sheetName,p.currentCell||'A1')||'(Empty)':'(No page)';})()}</span></div>` : ''}
+      ${quickPostType==='photo' ? `<div style="margin-bottom:16px;"><label style="font-weight:700;">🖼️ Photo URL:</label><input id="quickPhotoUrl" placeholder="https://example.com/image.jpg"><label style="font-weight:700;margin-top:8px;">📝 Caption (optional):</label><textarea id="quickPhotoCaption" rows="3" placeholder="Caption..."></textarea></div>` : ''}
+      <button class="btn btn-submit btn-block" id="quickSubmitBtn" onclick="executeQuickPost()" style="font-size:1.2rem;padding:18px;">🚀 SUBMIT - POST TO FACEBOOK NOW</button>` : '<div style="text-align:center;padding:20px;color:#94a3b8;">👆 Select a page above to start posting</div>'}
+      ${APP.selectedQuickPage ? `<div style="text-align:center;margin-top:10px;font-size:0.8rem;color:#64748b;">⚡ Posting to: <strong>${APP.pages.find(p=>p.id===APP.selectedQuickPage)?.name||'?'}</strong></div>` : ''}
     </div>`;
   setTimeout(() => { const ta = document.getElementById('quickPostText'); if (ta) ta.addEventListener('input', function() { quickPostTextContent = this.value; document.getElementById('quickCharCount').textContent = this.value.length; }); }, 100);
 }
-function selectQuickPage(pageId) { APP.selectedQuickPage = pageId; renderQuickPostView(); }
+function selectQuickPage(pageId) { APP.selectedQuickPage = pageId; saveState(); renderQuickPostView(); }
 async function executeQuickPost() {
-  if (!APP.selectedQuickPage) { Toast.error('Select a page!'); return; }
+  if (!APP.selectedQuickPage) { Toast.error('Select a page first!'); return; }
   const page = APP.pages.find(p => p.id === APP.selectedQuickPage); if (!page) return;
-  const btn = document.getElementById('quickSubmitBtn'); if (btn) { btn.disabled = true; btn.textContent = '⏳...'; btn.style.background = '#94a3b8'; }
+  const btn = document.getElementById('quickSubmitBtn'); if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Posting... Please wait...'; btn.style.background = '#94a3b8'; }
   try {
-    let msg = '';
-    if (quickPostType === 'text') { msg = document.getElementById('quickPostText').value.trim(); if (!msg) { Toast.error('Write text!'); if (btn) { btn.disabled = false; btn.textContent = '🚀 SUBMIT'; btn.style.background = 'linear-gradient(135deg, #059669, #10b981)'; } return; } await postToFacebook(page.token, msg, page.pageId); }
-    else if (quickPostType === 'cell') { const cell = page.currentCell || 'A1'; try { await fetchSheet(page.sheetName); } catch(e){} msg = getCell(page.sheetName, cell); if (!msg) { Toast.error('Cell empty!'); if (btn) { btn.disabled = false; btn.textContent = '🚀 SUBMIT'; btn.style.background = 'linear-gradient(135deg, #059669, #10b981)'; } return; } await postToFacebook(page.token, msg, page.pageId); advanceCell(page); }
-    page.stats.posts = (page.stats.posts||0) + 1; saveState(); addLog('✅ Quick post!','success'); Toast.success('✅ Posted!'); quickPostTextContent = ''; renderQuickPostView();
-  } catch (e) { addLog('❌ '+e.message,'error'); Toast.error(e.message, 15000); if (btn) { btn.disabled = false; btn.textContent = '🚀 SUBMIT'; btn.style.background = 'linear-gradient(135deg, #059669, #10b981)'; } }
+    if (quickPostType === 'text') { const msg = document.getElementById('quickPostText').value.trim(); if (!msg) { Toast.error('Write some text!'); if (btn) { btn.disabled = false; btn.innerHTML = '🚀 SUBMIT - POST TO FACEBOOK NOW'; btn.style.background = 'linear-gradient(135deg, #059669, #10b981)'; } return; } await postToFacebook(page.token, msg, page.pageId); }
+    else if (quickPostType === 'cell') { const cell = page.currentCell || 'A1'; try { await fetchSheet(page.sheetName); } catch(e){} const msg = getCell(page.sheetName, cell); if (!msg) { Toast.error('Cell is empty!'); if (btn) { btn.disabled = false; btn.innerHTML = '🚀 SUBMIT'; btn.style.background = 'linear-gradient(135deg, #059669, #10b981)'; } return; } await postToFacebook(page.token, msg, page.pageId); advanceCell(page); }
+    else if (quickPostType === 'photo') { const url = document.getElementById('quickPhotoUrl').value.trim(); const cap = document.getElementById('quickPhotoCaption').value.trim(); if (!url) { Toast.error('Enter photo URL!'); if (btn) { btn.disabled = false; btn.innerHTML = '🚀 SUBMIT'; btn.style.background = 'linear-gradient(135deg, #059669, #10b981)'; } return; } await postPhotoToFacebook(page.token, cap, url, page.pageId); }
+    page.stats.posts = (page.stats.posts||0) + 1; page.stats.lastPost = new Date().toISOString(); saveState(); addLog('✅ Quick post success!','success'); Toast.success('✅ Posted successfully!'); quickPostTextContent = ''; renderQuickPostView();
+  } catch (e) { addLog(`❌ ${e.message}`,'error'); Toast.error(e.message, 15000); if (btn) { btn.disabled = false; btn.innerHTML = '🚀 SUBMIT - POST TO FACEBOOK NOW'; btn.style.background = 'linear-gradient(135deg, #059669, #10b981)'; } }
 }
 
 // ==================== SCHEDULER ====================
