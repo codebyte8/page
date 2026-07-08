@@ -1,100 +1,150 @@
 const axios = require('axios');
 const admin = require('firebase-admin');
 
-// Initialize Firebase Admin SDK
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
-
+admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 const db = admin.firestore();
 
-// Function to get data from Google Sheet (published as CSV)
-async function getGoogleSheetData(sheetId, gid) {
+// Function to fetch Google Sheet data using Sheet ID + GID
+async function getSheetData(sheetId, gid) {
   try {
+    // Build URL with Sheet ID and GID
     const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
-    console.log(`📊 Fetching sheet: ${url}`);
+    console.log(`📊 Fetching Sheet:`);
+    console.log(`   Sheet ID: ${sheetId}`);
+    console.log(`   GID: ${gid}`);
+    console.log(`   URL: ${url}`);
     
     const response = await axios.get(url);
     const csvData = response.data;
     
-    // Parse CSV
-    const rows = csvData.split('\n').map(row => {
-      // Handle quoted fields
-      const matches = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
-      return matches.map(field => field.replace(/^"|"$/g, '').trim());
-    }).filter(row => row.length > 0 && row[0]); // Remove empty rows
+    // Parse CSV properly
+    const rows = [];
+    const lines = csvData.split('\n');
     
-    console.log(`📊 Found ${rows.length} rows in sheet`);
+    for (let line of lines) {
+      line = line.trim();
+      if (!line) continue;
+      
+      // Parse CSV with quote handling
+      const fields = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (let char of line) {
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          fields.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      fields.push(current.trim());
+      
+      // Clean quotes from fields
+      const cleanFields = fields.map(f => f.replace(/^"|"$/g, '').trim());
+      
+      // Only add if Column A has content
+      if (cleanFields[0]) {
+        rows.push(cleanFields);
+      }
+    }
+    
+    console.log(`📊 Total rows with content: ${rows.length}`);
+    
+    // Print first 3 rows as preview
+    if (rows.length > 0) {
+      console.log('📝 Preview of first rows:');
+      rows.slice(0, 3).forEach((row, i) => {
+        console.log(`   Row ${i + 1}: "${row[0]?.substring(0, 50)}${row[0]?.length > 50 ? '...' : ''}"`);
+        if (row[1]) console.log(`          Image: ${row[1]}`);
+        if (row[2]) console.log(`          Link: ${row[2]}`);
+        if (row[3]) console.log(`          Time: ${row[3]}`);
+      });
+    }
+    
     return rows;
   } catch (error) {
-    console.error('❌ Error fetching sheet:', error.message);
+    console.error(`❌ Error fetching sheet (ID: ${sheetId}, GID: ${gid}):`, error.message);
+    if (error.response?.status === 404) {
+      console.error('   → Sheet not found. Check if Sheet ID and GID are correct.');
+      console.error('   → Make sure the sheet is published (File → Share → Publish to web → CSV).');
+    }
     return [];
   }
 }
 
-// Function to get the next post index
-async function getNextPostIndex(pageId) {
-  const indexDoc = await db.collection('post_index').doc(pageId).get();
-  if (indexDoc.exists) {
-    return indexDoc.data().currentIndex || 0;
+// Get current post index for a page
+async function getCurrentIndex(pageId) {
+  const doc = await db.collection('post_index').doc(pageId).get();
+  if (doc.exists) {
+    const data = doc.data();
+    console.log(`   📍 Current index: ${data.currentIndex || 0} (Row ${(data.currentIndex || 0) + 1})`);
+    return data.currentIndex || 0;
   }
+  console.log('   📍 Starting from Row 1 (no previous index)');
   return 0;
 }
 
-// Function to update the post index
-async function updatePostIndex(pageId, newIndex) {
+// Update post index
+async function updateIndex(pageId, index, totalRows) {
   await db.collection('post_index').doc(pageId).set({
-    currentIndex: newIndex,
+    currentIndex: index,
+    totalRows: totalRows,
+    sheetId: null, // Will be set from page data
+    gid: null,
     updatedAt: admin.firestore.FieldValue.serverTimestamp()
   }, { merge: true });
+  console.log(`   💾 Index updated: ${index} (Next: Row ${index + 1})`);
 }
 
-// Function to parse sheet row for post data
-function parsePostData(row, postTime) {
-  // Column A: Post content/message
-  // Column B: Image URL (optional)
-  // Column C: Link URL (optional)
-  // Column D: Post time (optional - HH:MM format)
-  
-  const message = row[0] || '';
-  const imageUrl = row[1] || '';
-  const linkUrl = row[2] || '';
-  const scheduledTime = row[3] || '';
-  
-  return { message, imageUrl, linkUrl, scheduledTime };
+// Parse row data into post object
+function parseRowData(row) {
+  return {
+    message: row[0] || '',
+    imageUrl: row[1] || '',
+    linkUrl: row[2] || '',
+    scheduledTime: row[3] || ''  // Format: HH:MM (UTC)
+  };
 }
 
-// Function to check if it's time to post based on scheduled time
+// Check if it's time to post based on scheduled time
 function shouldPostNow(scheduledTime) {
-  if (!scheduledTime) return true; // No time specified, post now
+  if (!scheduledTime || scheduledTime.trim() === '') {
+    return true; // No time specified = post whenever script runs
+  }
   
   try {
-    const now = new Date();
     const [hours, minutes] = scheduledTime.split(':').map(Number);
-    
     if (isNaN(hours) || isNaN(minutes)) return true;
     
-    const currentHour = now.getUTCHours();
-    const currentMinute = now.getUTCMinutes();
-    
-    // Allow posting within 5 minutes window
+    const now = new Date();
     const scheduledTotalMinutes = hours * 60 + minutes;
-    const currentTotalMinutes = currentHour * 60 + currentMinute;
+    const currentTotalMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
     const diff = Math.abs(currentTotalMinutes - scheduledTotalMinutes);
     
-    return diff <= 5; // Within 5 minutes window
+    const shouldPost = diff <= 10; // Within 10 minutes window
+    
+    if (!shouldPost) {
+      console.log(`   ⏰ Scheduled: ${scheduledTime} UTC | Current: ${now.getUTCHours().toString().padStart(2, '0')}:${now.getUTCMinutes().toString().padStart(2, '0')} UTC`);
+      console.log(`   ⏭️ Not time yet (${diff} minutes off). Skipping.`);
+    }
+    
+    return shouldPost;
   } catch {
-    return true; // If parsing fails, post anyway
+    return true;
   }
 }
 
+// Main auto post function
 async function autoPost() {
-  console.log('='.repeat(60));
-  console.log('🚀 FB Auto Poster - Google Sheets Version');
-  console.log('🕐 Time:', new Date().toISOString());
-  console.log('='.repeat(60));
+  console.log('\n' + '='.repeat(70));
+  console.log('🚀 FB AUTO POSTER - GOOGLE SHEETS SEQUENTIAL MODE');
+  console.log('🕐 Server Time (UTC):', new Date().toISOString());
+  console.log('🕐 Local Time:', new Date().toString());
+  console.log('='.repeat(70) + '\n');
   
   try {
     // Get all pages with valid tokens
@@ -103,166 +153,200 @@ async function autoPost() {
       .get();
     
     if (pagesSnapshot.empty) {
-      console.log('ℹ️ No active pages found. Exiting.');
+      console.log('ℹ️ No active pages with valid tokens found.');
+      console.log('   Add pages via the dashboard first.\n');
       return;
     }
     
-    console.log(`📄 Processing ${pagesSnapshot.size} active page(s)\n`);
+    console.log(`📄 Found ${pagesSnapshot.size} active page(s)\n`);
     
-    let totalSuccess = 0;
-    let totalFail = 0;
+    let totalPosted = 0;
     let totalSkipped = 0;
+    let totalFailed = 0;
     
-    for (const doc of pagesSnapshot.docs) {
-      const page = doc.data();
-      console.log(`\n📌 Page: ${page.name} (${page.pageId})`);
-      console.log(`   Sheet: ${page.sheetName || page.sheetId}`);
+    for (const pageDoc of pagesSnapshot.docs) {
+      const page = pageDoc.data();
+      const pageDbId = pageDoc.id;
+      const pageId = page.pageId;
+      const sheetId = page.sheetId;
+      const gid = page.gid || '0';
+      
+      console.log('─'.repeat(70));
+      console.log(`📌 PAGE: ${page.name}`);
+      console.log(`   Page ID: ${pageId}`);
+      console.log(`   Sheet ID: ${sheetId}`);
+      console.log(`   GID: ${gid}`);
+      console.log(`   Sheet URL: https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`);
       
       try {
-        // Get sheet data
-        const gid = page.gid || '0'; // Default to first sheet
-        const sheetData = await getGoogleSheetData(page.sheetId, gid);
+        // Fetch data from Google Sheet using Sheet ID + GID
+        const rows = await getSheetData(sheetId, gid);
         
-        if (sheetData.length === 0) {
-          console.log('   ⚠️ Sheet is empty or not accessible');
+        if (rows.length === 0) {
+          console.log('   ⚠️ No data found in sheet. Check:');
+          console.log('      1. Sheet is published (File → Share → Publish to web → CSV)');
+          console.log('      2. Sheet ID and GID are correct');
+          console.log('      3. Column A has content');
           totalSkipped++;
           continue;
         }
         
-        // Get current index
-        const currentIndex = await getNextPostIndex(page.pageId);
-        console.log(`   📍 Current index: ${currentIndex} (Row ${currentIndex + 1})`);
+        // Get current position
+        const currentIndex = await getCurrentIndex(pageId);
         
-        // Check if we've reached the end
-        if (currentIndex >= sheetData.length) {
-          console.log(`   ℹ️ All posts completed (${sheetData.length} total). Resetting to start.`);
-          await updatePostIndex(page.pageId, 0);
+        console.log(`   📊 Sheet has ${rows.length} total rows`);
+        console.log(`   📍 At Row ${currentIndex + 1} of ${rows.length}`);
+        
+        // Check if we've gone past all rows
+        if (currentIndex >= rows.length) {
+          console.log('   🔄 All rows have been posted! Resetting to Row 1.');
+          await updateIndex(pageId, 0, rows.length);
+          
+          // Update page document
+          await db.collection('pages').doc(pageDbId).update({
+            lastSheetRow: 0,
+            totalSheetRows: rows.length,
+            sheetId: sheetId,
+            gid: gid
+          });
+          
+          totalSkipped++;
           continue;
         }
         
-        // Get current row data
-        const currentRow = sheetData[currentIndex];
-        const postData = parsePostData(currentRow);
+        // Parse current row
+        const postData = parseRowData(rows[currentIndex]);
         
-        console.log(`   📝 Message: ${postData.message.substring(0, 50)}${postData.message.length > 50 ? '...' : ''}`);
+        console.log(`   📝 Message: "${postData.message.substring(0, 60)}${postData.message.length > 60 ? '...' : ''}"`);
+        if (postData.imageUrl) console.log(`   🖼️ Image URL: ${postData.imageUrl}`);
+        if (postData.linkUrl) console.log(`   🔗 Link URL: ${postData.linkUrl}`);
+        if (postData.scheduledTime) console.log(`   ⏰ Scheduled Time: ${postData.scheduledTime} UTC`);
         
         // Check if it's time to post
         if (!shouldPostNow(postData.scheduledTime)) {
-          console.log(`   ⏰ Scheduled for ${postData.scheduledTime || 'anytime'}, skipping for now`);
           totalSkipped++;
           continue;
         }
         
-        // Post to Facebook
-        let url, params;
+        // Prepare Facebook API request
+        let fbUrl, fbParams;
         
-        if (postData.imageUrl) {
+        if (postData.imageUrl && postData.imageUrl.startsWith('http')) {
           // Image post
-          console.log('   🖼️ Posting with image...');
-          url = `https://graph.facebook.com/v18.0/${page.pageId}/photos`;
-          params = new URLSearchParams({
+          console.log('   🖼️ Creating IMAGE post...');
+          fbUrl = `https://graph.facebook.com/v18.0/${pageId}/photos`;
+          fbParams = new URLSearchParams({
             url: postData.imageUrl,
             message: postData.message,
             access_token: page.token
           });
-        } else if (postData.linkUrl) {
+        } else if (postData.linkUrl && postData.linkUrl.startsWith('http')) {
           // Link post
-          console.log('   🔗 Posting with link...');
-          url = `https://graph.facebook.com/v18.0/${page.pageId}/feed`;
-          params = new URLSearchParams({
+          console.log('   🔗 Creating LINK post...');
+          fbUrl = `https://graph.facebook.com/v18.0/${pageId}/feed`;
+          fbParams = new URLSearchParams({
             link: postData.linkUrl,
             message: postData.message,
             access_token: page.token
           });
         } else {
           // Text only post
-          console.log('   📝 Posting text...');
-          url = `https://graph.facebook.com/v18.0/${page.pageId}/feed`;
-          params = new URLSearchParams({
+          console.log('   📝 Creating TEXT post...');
+          fbUrl = `https://graph.facebook.com/v18.0/${pageId}/feed`;
+          fbParams = new URLSearchParams({
             message: postData.message,
             access_token: page.token
           });
         }
         
-        const response = await axios.post(url, params.toString(), {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-          }
+        // Send to Facebook
+        console.log('   📤 Sending to Facebook...');
+        const response = await axios.post(fbUrl, fbParams.toString(), {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         });
         
         if (response.data && response.data.id) {
-          console.log(`   ✅ Posted successfully! Post ID: ${response.data.id}`);
+          console.log(`   ✅ SUCCESS! Facebook Post ID: ${response.data.id}`);
           
           // Move to next row
           const nextIndex = currentIndex + 1;
-          await updatePostIndex(page.pageId, nextIndex);
-          console.log(`   📍 Next index: ${nextIndex} (Row ${nextIndex + 1})`);
+          await updateIndex(pageId, nextIndex, rows.length);
+          
+          // Update page document in Firestore
+          await db.collection('pages').doc(pageDbId).update({
+            lastSheetRow: nextIndex,
+            totalSheetRows: rows.length,
+            sheetId: sheetId,
+            gid: gid,
+            lastAutoPost: admin.firestore.FieldValue.serverTimestamp()
+          });
           
           // Save post log
           await db.collection('post_logs').add({
-            pageId: page.pageId,
+            pageId: pageId,
             pageName: page.name,
             postId: response.data.id,
             message: postData.message,
+            imageUrl: postData.imageUrl || '',
+            linkUrl: postData.linkUrl || '',
             sheetRow: currentIndex + 1,
+            totalRows: rows.length,
+            sheetId: sheetId,
+            gid: gid,
             type: 'auto-sheet',
             timestamp: admin.firestore.FieldValue.serverTimestamp()
           });
           
-          // Update page's last post time
-          await db.collection('pages').doc(doc.id).update({
-            lastAutoPost: admin.firestore.FieldValue.serverTimestamp(),
-            lastSheetRow: currentIndex + 1
-          });
+          console.log(`   ➡️ Next post will be Row ${nextIndex + 1}`);
+          totalPosted++;
           
-          totalSuccess++;
-          
-          // If we reached the end, reset or notify
-          if (nextIndex >= sheetData.length) {
-            console.log(`   🔄 All ${sheetData.length} posts completed! Resetting to start.`);
-            await updatePostIndex(page.pageId, 0);
-            
-            await db.collection('post_logs').add({
-              pageId: page.pageId,
-              pageName: page.name,
-              message: 'All sheet posts completed. Reset to start.',
-              type: 'system',
-              timestamp: admin.firestore.FieldValue.serverTimestamp()
-            });
+          // Check if all rows completed
+          if (nextIndex >= rows.length) {
+            console.log('   🎉 ALL ROWS COMPLETED! Resetting to Row 1 for next cycle.');
+            await updateIndex(pageId, 0, rows.length);
           }
         } else {
-          throw new Error('No post ID returned');
+          throw new Error('No post ID returned from Facebook');
         }
         
       } catch (error) {
-        totalFail++;
+        totalFailed++;
         const errorMsg = error.response?.data?.error?.message || error.message;
-        console.error(`   ❌ Failed: ${errorMsg}`);
+        console.error(`   ❌ FAILED: ${errorMsg}`);
         
         // Check for expired token
         if (error.response?.data?.error?.code === 190) {
-          await db.collection('pages').doc(doc.id).update({
+          await db.collection('pages').doc(pageDbId).update({
             tokenValid: false,
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
           });
-          console.log(`   ⚠️ Token invalidated`);
+          console.log('   ⚠️ Token expired! Marked as invalid.');
+          console.log('   🔧 Please update token from dashboard.');
+        }
+        
+        // Check for permission errors
+        if (error.response?.status === 403) {
+          console.log('   💡 Tip: Make sure the sheet is published (File → Share → Publish to web)');
         }
       }
       
-      // Delay between pages
+      // Delay between pages to avoid rate limiting
       await new Promise(resolve => setTimeout(resolve, 3000));
+      console.log(''); // Empty line between pages
     }
     
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 Final Summary:');
-    console.log(`  ✅ Successful: ${totalSuccess}`);
-    console.log(`  ❌ Failed: ${totalFail}`);
-    console.log(`  ⏭️ Skipped: ${totalSkipped}`);
-    console.log(`  📄 Pages Processed: ${pagesSnapshot.size}`);
-    console.log('='.repeat(60));
+    // Final Summary
+    console.log('='.repeat(70));
+    console.log('📊 FINAL SUMMARY:');
+    console.log(`   ✅ Successfully Posted: ${totalPosted}`);
+    console.log(`   ❌ Failed: ${totalFailed}`);
+    console.log(`   ⏭️ Skipped: ${totalSkipped}`);
+    console.log(`   📄 Total Pages Processed: ${pagesSnapshot.size}`);
+    console.log('='.repeat(70) + '\n');
     
   } catch (error) {
-    console.error('💥 Fatal error:', error.message);
+    console.error('💥 FATAL ERROR:', error.message);
+    console.error(error.stack);
     process.exit(1);
   }
 }
@@ -270,10 +354,10 @@ async function autoPost() {
 // Run the script
 autoPost()
   .then(() => {
-    console.log('✅ Auto post completed!');
+    console.log('✅ Auto post script completed successfully!');
     process.exit(0);
   })
   .catch(error => {
-    console.error('❌ Failed:', error);
+    console.error('❌ Script failed:', error);
     process.exit(1);
   });
