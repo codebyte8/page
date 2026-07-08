@@ -2,14 +2,14 @@ name: Auto Facebook Post
 
 on:
   schedule:
-    # Runs every day at 8:00 AM UTC (adjust as needed)
-    - cron: '0 8 * * *'
+    # Run every 30 minutes to check for scheduled posts
+    - cron: '*/30 * * * *'
   workflow_dispatch:
     inputs:
-      message:
-        description: 'Custom message for this run'
+      force:
+        description: 'Force post (ignore time check)'
         required: false
-        default: 'This is an automated post! ⏰ #AutoPost'
+        default: 'false'
 
 jobs:
   auto-post:
@@ -33,4 +33,3 @@ jobs:
         run: node auto-post.js
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          CUSTOM_MESSAGE: ${{ github.event.inputs.message }}
