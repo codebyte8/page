@@ -1,5 +1,5 @@
 {
-  "name": "page",
+  "name": "fb-auto-poster",
   "version": "1.0.0",
   "description": "Facebook Auto Poster with Admin Dashboard",
   "main": "auto-post.js",

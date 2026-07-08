@@ -186,6 +186,7 @@
             border-color: #667eea; 
         }
         .input-group textarea { resize: vertical; min-height: 100px; }
+        .input-group small { display: block; margin-top: 5px; }
         
         .post-form { 
             background: white; 
@@ -282,32 +283,14 @@
             margin-top: 5px;
         }
         
-        .loading-spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #667eea;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
         @media (max-width: 768px) {
             .sidebar { width: 200px; }
             .main-content { margin-left: 200px; padding: 20px; }
             .cards-grid { grid-template-columns: 1fr; }
-            .section-header { flex-direction: column; align-items: flex-start; }
         }
         
         @media (max-width: 576px) {
-            .sidebar { 
-                width: 100%; 
-                height: auto; 
-                position: relative; 
-            }
+            .sidebar { width: 100%; height: auto; position: relative; }
             .dashboard { flex-direction: column; }
             .main-content { margin-left: 0; }
             .nav-menu { display: flex; overflow-x: auto; }
@@ -320,7 +303,7 @@
         <nav class="sidebar">
             <div class="sidebar-header">
                 <h2>📱 FB Auto Poster</h2>
-                <small>Dashboard v1.0</small>
+                <small>Dashboard v2.0</small>
             </div>
             <ul class="nav-menu">
                 <li class="nav-item active" data-page="pages">
@@ -343,7 +326,7 @@
         </nav>
 
         <main class="main-content">
-            <!-- Page Management Section -->
+            <!-- Page Management -->
             <div id="pages" class="page-section active">
                 <div class="section-header">
                     <h1>📄 Page Management</h1>
@@ -353,7 +336,7 @@
                 <div id="pagesList" class="cards-grid"></div>
             </div>
 
-            <!-- Google Sheets Section -->
+            <!-- Google Sheets -->
             <div id="sheets" class="page-section">
                 <div class="section-header">
                     <h1>📊 Google Sheets</h1>
@@ -362,7 +345,7 @@
                 <div id="sheetsList" class="cards-grid"></div>
             </div>
 
-            <!-- Instant Post Section -->
+            <!-- Instant Post -->
             <div id="instant-post" class="page-section">
                 <div class="section-header">
                     <h1>⚡ Instant Post</h1>
@@ -399,7 +382,7 @@
                 </div>
             </div>
 
-            <!-- Post Logs Section -->
+            <!-- Post Logs -->
             <div id="logs" class="page-section">
                 <div class="section-header">
                     <h1>📋 Post Logs</h1>
@@ -424,14 +407,22 @@
             <div class="input-group">
                 <label>Page Access Token *</label>
                 <input type="password" id="pageToken" placeholder="EAA..." required>
-                <small style="color: #888; font-size: 11px;">Token is stored securely and never shared</small>
+                <small style="color: #888;">Token is stored securely and never shared</small>
             </div>
             <div class="input-group">
                 <label>Select Google Sheet *</label>
                 <select id="pageSheetSelect">
                     <option value="">-- Add a sheet first --</option>
                 </select>
-                <small style="color: #e74c3c; font-size: 11px;">⚠️ You must add a Google Sheet before adding a page</small>
+                <small style="color: #e74c3c;">⚠️ You must add a Google Sheet before adding a page</small>
+            </div>
+            <div class="input-group">
+                <label>Sheet GID (Optional)</label>
+                <input type="text" id="pageGid" placeholder="0 or 1083842097" value="0">
+                <small style="color: #888;">
+                    GID is the sheet/tab number. Default is 0 (first tab).<br>
+                    Find in sheet URL: #gid=<b>1083842097</b>
+                </small>
             </div>
             <div class="modal-buttons">
                 <button class="btn btn-primary" onclick="addPage()">💾 Save Page</button>
@@ -451,7 +442,7 @@
             <div class="input-group">
                 <label>Google Sheet ID *</label>
                 <input type="text" id="sheetId" placeholder="1BxiMVs0XRA5nFMjKvBdBZjgmUUqptlbs74OgvE2upms" required>
-                <small style="color: #888; font-size: 11px;">Copy from sheet URL: docs.google.com/spreadsheets/d/<b>SHEET_ID</b>/edit</small>
+                <small style="color: #888;">Copy from URL: docs.google.com/spreadsheets/d/<b>SHEET_ID</b>/edit</small>
             </div>
             <div class="modal-buttons">
                 <button class="btn btn-primary" onclick="addSheet()">💾 Save Sheet</button>
@@ -477,6 +468,10 @@
                 <label>Page Access Token</label>
                 <input type="password" id="editPageToken" required>
             </div>
+            <div class="input-group">
+                <label>Sheet GID</label>
+                <input type="text" id="editPageGid" placeholder="0">
+            </div>
             <div class="modal-buttons">
                 <button class="btn btn-primary" onclick="updatePage()">💾 Update</button>
                 <button class="btn btn-secondary" onclick="closeModal('editPageModal')">Cancel</button>
@@ -489,7 +484,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     
     <script>
-        // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyBM-EP3crFurJETR83hFDl2LXCIWHEd4xs",
             authDomain: "myfacebookpage-90ded.firebaseapp.com",
@@ -510,7 +504,10 @@
                 window.location.href = 'login.html';
             } else {
                 document.getElementById('userEmail').textContent = user.email;
+                loadPages();
                 loadPageStats();
+                loadSheets();
+                loadPagesForPost();
             }
         });
 
@@ -547,9 +544,7 @@
             }
         };
 
-        // ==================== PAGE MANAGEMENT ====================
-        let allPages = [];
-
+        // ==================== PAGE STATS ====================
         async function loadPageStats() {
             try {
                 const snapshot = await db.collection('pages').get();
@@ -576,6 +571,9 @@
             }
         }
 
+        // ==================== PAGE MANAGEMENT ====================
+        let allPages = [];
+
         async function loadPages() {
             try {
                 const snapshot = await db.collection('pages').orderBy('createdAt', 'desc').get();
@@ -584,7 +582,7 @@
             } catch (error) {
                 console.error('Error loading pages:', error);
                 document.getElementById('pagesList').innerHTML = 
-                    '<p class="empty-state"><span class="icon">❌</span>Error loading pages. Check console.</p>';
+                    '<p class="empty-state"><span class="icon">❌</span>Error loading pages.</p>';
             }
         }
 
@@ -607,8 +605,9 @@
                         <p><strong>📋 Page ID:</strong> ${escapeHtml(page.pageId)}</p>
                         <p><strong>🔑 Token:</strong> <span class="token-display">${page.token.substring(0, 6)}${'•'.repeat(20)}${page.token.slice(-4)}</span></p>
                         <p><strong>📊 Sheet:</strong> ${escapeHtml(page.sheetName || page.sheetId)}</p>
+                        <p><strong>🔢 GID:</strong> ${page.gid || '0'}</p>
+                        <p><strong>📍 Last Row Posted:</strong> ${page.lastSheetRow ? 'Row ' + page.lastSheetRow : 'Not started yet'}</p>
                         <p><strong>📅 Added:</strong> ${page.createdAt ? new Date(page.createdAt.seconds * 1000).toLocaleString() : 'N/A'}</p>
-                        <p><strong>🔄 Updated:</strong> ${page.updatedAt ? new Date(page.updatedAt.seconds * 1000).toLocaleString() : 'N/A'}</p>
                     </div>
                     <div class="card-footer">
                         <button class="btn btn-info btn-sm" onclick="checkToken('${page.id}')">🔍 Check Token</button>
@@ -623,7 +622,7 @@
             try {
                 const sheetsSnapshot = await db.collection('sheets').get();
                 if (sheetsSnapshot.empty) {
-                    alert('⚠️ No Google Sheets found!\n\nYou must add a Google Sheet before adding a page.\n\nGo to "Google Sheets" menu and add a sheet first.');
+                    alert('⚠️ No Google Sheets found!\n\nYou must add a Google Sheet before adding a page.\n\nGo to "Google Sheets" menu first.');
                     return;
                 }
                 const select = document.getElementById('pageSheetSelect');
@@ -642,6 +641,7 @@
             const pageId = document.getElementById('pageId').value.trim();
             const token = document.getElementById('pageToken').value.trim();
             const sheetId = document.getElementById('pageSheetSelect').value;
+            const gid = document.getElementById('pageGid').value.trim() || '0';
             
             if (!name || !pageId || !token) {
                 alert('❌ Please fill in all required fields!');
@@ -654,22 +654,17 @@
             }
             
             try {
-                // Validate Facebook token
                 const fbRes = await fetch(`https://graph.facebook.com/v18.0/me?access_token=${token}`);
                 const fbData = await fbRes.json();
                 if (fbData.error) {
-                    throw new Error('Invalid Facebook token: ' + (fbData.error.message || 'Unknown error'));
+                    throw new Error('Invalid token: ' + (fbData.error.message || 'Unknown error'));
                 }
                 
                 const sheetDoc = await db.collection('sheets').doc(sheetId).get();
                 const sheetName = sheetDoc.exists ? sheetDoc.data().name : 'Unknown Sheet';
                 
                 await db.collection('pages').add({
-                    name,
-                    pageId,
-                    token,
-                    sheetId,
-                    sheetName,
+                    name, pageId, token, sheetId, sheetName, gid,
                     tokenValid: true,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -679,6 +674,7 @@
                 document.getElementById('pageName').value = '';
                 document.getElementById('pageId').value = '';
                 document.getElementById('pageToken').value = '';
+                document.getElementById('pageGid').value = '0';
                 alert('✅ Page added successfully!');
                 loadPages();
                 loadPageStats();
@@ -691,10 +687,6 @@
             const page = allPages.find(p => p.id === pageId);
             if (!page) return;
             
-            const button = event.target;
-            button.disabled = true;
-            button.textContent = 'Checking...';
-            
             try {
                 const res = await fetch(`https://graph.facebook.com/v18.0/me?access_token=${page.token}`);
                 const data = await res.json();
@@ -705,17 +697,14 @@
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
-                alert(valid ? '✅ Token is valid and working!' : '❌ Token is invalid or expired!');
+                alert(valid ? '✅ Token is valid!' : '❌ Token is invalid!');
                 loadPages();
                 loadPageStats();
             } catch {
                 await db.collection('pages').doc(pageId).update({ tokenValid: false });
-                alert('❌ Token check failed! Token may be invalid.');
+                alert('❌ Token check failed!');
                 loadPages();
                 loadPageStats();
-            } finally {
-                button.disabled = false;
-                button.textContent = '🔍 Check Token';
             }
         }
 
@@ -727,6 +716,7 @@
             document.getElementById('editPageName').value = page.name;
             document.getElementById('editPageId').value = page.pageId;
             document.getElementById('editPageToken').value = page.token;
+            document.getElementById('editPageGid').value = page.gid || '0';
             document.getElementById('editPageModal').style.display = 'flex';
         }
 
@@ -735,6 +725,7 @@
             const name = document.getElementById('editPageName').value.trim();
             const pageId = document.getElementById('editPageId').value.trim();
             const token = document.getElementById('editPageToken').value.trim();
+            const gid = document.getElementById('editPageGid').value.trim() || '0';
             
             if (!name || !pageId || !token) {
                 alert('❌ Please fill in all fields!');
@@ -743,14 +734,12 @@
             
             try {
                 await db.collection('pages').doc(docId).update({
-                    name,
-                    pageId,
-                    token,
+                    name, pageId, token, gid,
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
                 closeModal('editPageModal');
-                alert('✅ Page updated successfully!');
+                alert('✅ Page updated!');
                 loadPages();
             } catch (error) {
                 alert('❌ Error: ' + error.message);
@@ -761,10 +750,10 @@
             const page = allPages.find(p => p.id === pageId);
             if (!page) return;
             
-            if (confirm(`Are you sure you want to remove "${page.name}"?\n\nThis action cannot be undone.`)) {
+            if (confirm(`Remove "${page.name}"? This cannot be undone.`)) {
                 try {
                     await db.collection('pages').doc(pageId).delete();
-                    alert('✅ Page removed successfully!');
+                    alert('✅ Page removed!');
                     loadPages();
                     loadPageStats();
                 } catch (error) {
@@ -789,11 +778,10 @@
         async function renderSheets() {
             const container = document.getElementById('sheetsList');
             if (allSheets.length === 0) {
-                container.innerHTML = '<p class="empty-state"><span class="icon">📊</span>No Google Sheets added.<br><small>Add a sheet to get started with page management.</small></p>';
+                container.innerHTML = '<p class="empty-state"><span class="icon">📊</span>No Google Sheets added.</p>';
                 return;
             }
             
-            // Count pages for each sheet
             for (let sheet of allSheets) {
                 const pagesSnapshot = await db.collection('pages').where('sheetId', '==', sheet.id).get();
                 sheet.pageCount = pagesSnapshot.size;
@@ -806,13 +794,8 @@
                     </div>
                     <div class="card-body">
                         <p><strong>🆔 Sheet ID:</strong> <span class="token-display">${escapeHtml(sheet.id)}</span></p>
-                        <p><strong>🔗 Connected Pages:</strong> ${sheet.pageCount || 0}</p>
-                        <p><strong>📅 Added:</strong> ${sheet.createdAt ? new Date(sheet.createdAt.seconds * 1000).toLocaleString() : 'N/A'}</p>
-                        <p>
-                            <a href="https://docs.google.com/spreadsheets/d/${sheet.id}" target="_blank" style="color: #667eea; text-decoration: none;">
-                                🔗 Open in Google Sheets →
-                            </a>
-                        </p>
+                        <p><strong>🔗 Pages:</strong> ${sheet.pageCount || 0}</p>
+                        <p><a href="https://docs.google.com/spreadsheets/d/${sheet.id}" target="_blank" style="color: #667eea;">🔗 Open in Google Sheets →</a></p>
                     </div>
                     <div class="card-footer">
                         <button class="btn btn-danger btn-sm" onclick="removeSheet('${sheet.id}')">🗑️ Remove</button>
@@ -829,18 +812,11 @@
             const name = document.getElementById('sheetName').value.trim();
             const sheetId = document.getElementById('sheetId').value.trim();
             
-            if (!name || !sheetId) {
-                alert('❌ Please fill in all fields!');
-                return;
-            }
+            if (!name || !sheetId) return alert('❌ Fill all fields!');
             
             try {
-                // Check if sheet already exists
-                const existingDoc = await db.collection('sheets').doc(sheetId).get();
-                if (existingDoc.exists) {
-                    alert('⚠️ This Sheet ID already exists!');
-                    return;
-                }
+                const exists = await db.collection('sheets').doc(sheetId).get();
+                if (exists.exists) return alert('⚠️ Sheet ID already exists!');
                 
                 await db.collection('sheets').doc(sheetId).set({ 
                     name,
@@ -850,7 +826,7 @@
                 closeModal('addSheetModal');
                 document.getElementById('sheetName').value = '';
                 document.getElementById('sheetId').value = '';
-                alert('✅ Google Sheet added successfully!');
+                alert('✅ Sheet added!');
                 loadSheets();
             } catch (error) {
                 alert('❌ Error: ' + error.message);
@@ -858,42 +834,29 @@
         }
 
         async function removeSheet(sheetId) {
-            if (confirm('⚠️ Deleting this sheet may affect connected pages.\n\nAre you sure you want to continue?')) {
-                try {
-                    await db.collection('sheets').doc(sheetId).delete();
-                    alert('✅ Sheet removed successfully!');
-                    loadSheets();
-                } catch (error) {
-                    alert('❌ Error: ' + error.message);
-                }
+            if (confirm('Delete this sheet? Connected pages may be affected.')) {
+                await db.collection('sheets').doc(sheetId).delete();
+                loadSheets();
             }
         }
 
         // ==================== INSTANT POST ====================
         document.getElementById('postType')?.addEventListener('change', function() {
-            document.getElementById('imageUrlGroup').style.display = 
-                this.value === 'image' ? 'block' : 'none';
-            document.getElementById('linkUrlGroup').style.display = 
-                this.value === 'link' ? 'block' : 'none';
+            document.getElementById('imageUrlGroup').style.display = this.value === 'image' ? 'block' : 'none';
+            document.getElementById('linkUrlGroup').style.display = this.value === 'link' ? 'block' : 'none';
         });
 
         async function loadPagesForPost() {
             try {
                 const snapshot = await db.collection('pages').where('tokenValid', '==', true).get();
                 const select = document.getElementById('postPageSelect');
-                
-                if (snapshot.empty) {
-                    select.innerHTML = '<option value="">-- No active pages found --</option>';
-                    return;
-                }
-                
-                select.innerHTML = '<option value="">-- Select a page --</option>' + 
-                    snapshot.docs.map(doc => {
-                        const page = doc.data();
-                        return `<option value="${doc.id}">${escapeHtml(page.name)}</option>`;
-                    }).join('');
+                select.innerHTML = snapshot.empty 
+                    ? '<option value="">-- No active pages --</option>'
+                    : '<option value="">-- Select a page --</option>' + snapshot.docs.map(doc => 
+                        `<option value="${doc.id}">${escapeHtml(doc.data().name)}</option>`
+                    ).join('');
             } catch (error) {
-                console.error('Error loading pages for post:', error);
+                console.error('Error:', error);
             }
         }
 
@@ -905,68 +868,37 @@
             const linkUrl = document.getElementById('postLinkUrl')?.value.trim();
             const resultDiv = document.getElementById('postResult');
             
-            if (!pageDocId) {
-                alert('❌ Please select a page!');
-                return;
-            }
+            if (!pageDocId) return alert('❌ Select a page!');
+            if (!message && !imageUrl && !linkUrl) return alert('❌ Enter content!');
             
-            if (!message && !imageUrl && !linkUrl) {
-                alert('❌ Please enter a message or provide media!');
-                return;
-            }
-            
-            resultDiv.innerHTML = '<div class="alert alert-info"><span class="loading-spinner"></span> Posting...</div>';
+            resultDiv.innerHTML = '<div class="alert alert-info">⏳ Posting...</div>';
             
             try {
                 const pageDoc = await db.collection('pages').doc(pageDocId).get();
                 const page = pageDoc.data();
                 
                 let url, params;
-                
                 if (postType === 'image' && imageUrl) {
                     url = `https://graph.facebook.com/v18.0/${page.pageId}/photos`;
-                    params = new URLSearchParams({
-                        url: imageUrl,
-                        message: message,
-                        access_token: page.token
-                    });
+                    params = new URLSearchParams({ url: imageUrl, message, access_token: page.token });
                 } else if (postType === 'link' && linkUrl) {
                     url = `https://graph.facebook.com/v18.0/${page.pageId}/feed`;
-                    params = new URLSearchParams({
-                        link: linkUrl,
-                        message: message,
-                        access_token: page.token
-                    });
+                    params = new URLSearchParams({ link: linkUrl, message, access_token: page.token });
                 } else {
                     url = `https://graph.facebook.com/v18.0/${page.pageId}/feed`;
-                    params = new URLSearchParams({
-                        message: message,
-                        access_token: page.token
-                    });
+                    params = new URLSearchParams({ message, access_token: page.token });
                 }
                 
                 const res = await fetch(url, { method: 'POST', body: params });
                 const result = await res.json();
                 
                 if (result.id) {
-                    resultDiv.innerHTML = `
-                        <div class="alert alert-success">
-                            ✅ <strong>Post Successful!</strong><br>
-                            Post ID: ${result.id}<br>
-                            Page: ${escapeHtml(page.name)}<br>
-                            Time: ${new Date().toLocaleString()}
-                        </div>`;
-                    
-                    // Save log
+                    resultDiv.innerHTML = `<div class="alert alert-success">✅ Posted! ID: ${result.id}</div>`;
                     await db.collection('post_logs').add({
-                        pageId: page.pageId,
-                        pageName: page.name,
-                        postId: result.id,
-                        message: message,
-                        type: postType,
+                        pageId: page.pageId, pageName: page.name, postId: result.id,
+                        message, type: 'instant',
                         timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     });
-                    
                     document.getElementById('postMessage').value = '';
                     document.getElementById('postImageUrl').value = '';
                     document.getElementById('postLinkUrl').value = '';
@@ -974,54 +906,32 @@
                     throw new Error(result.error?.message || 'Unknown error');
                 }
             } catch (error) {
-                resultDiv.innerHTML = `
-                    <div class="alert alert-danger">
-                        ❌ <strong>Post Failed!</strong><br>
-                        ${error.message}
-                    </div>`;
+                resultDiv.innerHTML = `<div class="alert alert-danger">❌ ${error.message}</div>`;
             }
         }
 
-        // ==================== POST LOGS ====================
+        // ==================== LOGS ====================
         async function loadLogs() {
             const container = document.getElementById('logsList');
-            
             try {
-                const snapshot = await db.collection('post_logs')
-                    .orderBy('timestamp', 'desc')
-                    .limit(50)
-                    .get();
-                
+                const snapshot = await db.collection('post_logs').orderBy('timestamp', 'desc').limit(50).get();
                 if (snapshot.empty) {
-                    container.innerHTML = '<p class="empty-state"><span class="icon">📋</span>No post logs yet.</p>';
+                    container.innerHTML = '<p class="empty-state"><span class="icon">📋</span>No logs yet.</p>';
                     return;
                 }
-                
-                container.innerHTML = `
-                    <div class="cards-grid">
-                        ${snapshot.docs.map(doc => {
-                            const log = doc.data();
-                            const time = log.timestamp ? new Date(log.timestamp.seconds * 1000).toLocaleString() : 'N/A';
-                            return `
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h3>${escapeHtml(log.pageName)}</h3>
-                                        <span class="badge badge-success">✅ Posted</span>
-                                    </div>
-                                    <div class="card-body">
-                                        <p><strong>📝 Message:</strong> ${escapeHtml(log.message?.substring(0, 100) || 'N/A')}${log.message?.length > 100 ? '...' : ''}</p>
-                                        <p><strong>🆔 Post ID:</strong> ${log.postId}</p>
-                                        <p><strong>📅 Posted:</strong> ${time}</p>
-                                        <p><strong>📋 Type:</strong> ${log.type || 'text'}</p>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                `;
+                container.innerHTML = `<div class="cards-grid">${snapshot.docs.map(doc => {
+                    const log = doc.data();
+                    return `<div class="card">
+                        <div class="card-header"><h3>${escapeHtml(log.pageName)}</h3><span class="badge badge-success">✅</span></div>
+                        <div class="card-body">
+                            <p><strong>📝 Message:</strong> ${escapeHtml(log.message?.substring(0, 100) || 'N/A')}</p>
+                            <p><strong>🆔 Post ID:</strong> ${log.postId}</p>
+                            <p><strong>📅 Time:</strong> ${log.timestamp ? new Date(log.timestamp.seconds * 1000).toLocaleString() : 'N/A'}</p>
+                        </div>
+                    </div>`;
+                }).join('')}</div>`;
             } catch (error) {
                 container.innerHTML = '<p class="empty-state">❌ Error loading logs.</p>';
-                console.error('Error loading logs:', error);
             }
         }
 
@@ -1032,12 +942,6 @@
             div.textContent = text;
             return div.innerHTML;
         }
-
-        // ==================== INITIAL LOAD ====================
-        loadPages();
-        loadPageStats();
-        loadSheets();
-        loadPagesForPost();
     </script>
 </body>
 </html>
