@@ -1,0 +1,17 @@
+{
+  "name": "fb-auto-poster",
+  "version": "1.0.0",
+  "description": "Facebook Auto Poster with Admin Dashboard",
+  "main": "auto-post.js",
+  "scripts": {
+    "start": "node auto-post.js",
+    "post": "node auto-post.js"
+  },
+  "keywords": ["facebook", "auto-post", "firebase"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "firebase-admin": "^11.11.0"
+  }
+}

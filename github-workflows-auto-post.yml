@@ -1,0 +1,36 @@
+name: Auto Facebook Post
+
+on:
+  schedule:
+    # Runs every day at 8:00 AM UTC (adjust as needed)
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+    inputs:
+      message:
+        description: 'Custom message for this run'
+        required: false
+        default: 'This is an automated post! ⏰ #AutoPost'
+
+jobs:
+  auto-post:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: |
+          npm init -y
+          npm install axios firebase-admin
+      
+      - name: Run Auto Poster
+        run: node auto-post.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          CUSTOM_MESSAGE: ${{ github.event.inputs.message }}

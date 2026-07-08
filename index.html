@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FB Auto Poster - Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #f0f2f5; 
+        }
+        
+        .dashboard { display: flex; min-height: 100vh; }
+        
+        .sidebar { 
+            width: 260px; 
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%); 
+            color: white; 
+            display: flex; 
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            left: 0;
+            top: 0;
+        }
+        .sidebar-header { 
+            padding: 25px 20px; 
+            border-bottom: 1px solid rgba(255,255,255,0.1); 
+        }
+        .sidebar-header h2 { font-size: 20px; font-weight: 700; }
+        .sidebar-header small { color: #aaa; font-size: 12px; }
+        .nav-menu { list-style: none; flex: 1; padding: 10px 0; }
+        .nav-item { 
+            padding: 15px 25px; 
+            cursor: pointer; 
+            transition: all 0.3s; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px;
+            font-size: 14px;
+            border-left: 3px solid transparent;
+            color: #ccc;
+        }
+        .nav-item:hover { 
+            background: rgba(255,255,255,0.05); 
+            color: white;
+        }
+        .nav-item.active { 
+            background: rgba(102, 126, 234, 0.2); 
+            border-left: 3px solid #667eea; 
+            color: white;
+            font-weight: 600;
+        }
+        .nav-icon { font-size: 18px; width: 24px; text-align: center; }
+        .sidebar-footer { 
+            padding: 20px; 
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .sidebar-footer .user-email { 
+            font-size: 12px; 
+            color: #aaa; 
+            display: block; 
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+        
+        .main-content { 
+            flex: 1; 
+            padding: 30px; 
+            margin-left: 260px;
+            min-height: 100vh;
+        }
+        .page-section { display: none; }
+        .page-section.active { display: block; animation: fadeIn 0.3s; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .section-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .section-header h1 { font-size: 24px; color: #333; }
+        
+        .cards-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); 
+            gap: 20px; 
+        }
+        .card { 
+            background: white; 
+            border-radius: 12px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08); 
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.12);
+        }
+        .card-header { 
+            padding: 20px; 
+            border-bottom: 1px solid #f0f0f0; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+        .card-header h3 { font-size: 16px; color: #333; }
+        .card-body { padding: 20px; }
+        .card-body p { margin: 10px 0; color: #555; font-size: 13px; line-height: 1.6; }
+        .card-body strong { color: #333; }
+        .card-footer { 
+            padding: 15px 20px; 
+            border-top: 1px solid #f0f0f0; 
+            display: flex; 
+            gap: 8px; 
+            flex-wrap: wrap;
+        }
+        
+        .btn { 
+            padding: 10px 18px; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 13px; 
+            font-weight: 600;
+            transition: all 0.2s; 
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn:hover { transform: translateY(-1px); }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover { background: #5a6fd6; box-shadow: 0 3px 10px rgba(102,126,234,0.3); }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-danger:hover { background: #c82333; }
+        .btn-warning { background: #ffc107; color: #333; }
+        .btn-info { background: #17a2b8; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .btn-block { width: 100%; justify-content: center; }
+        .btn-logout { 
+            background: transparent; 
+            border: 1px solid #dc3545; 
+            color: #dc3545; 
+            padding: 8px 16px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 12px;
+            width: 100%;
+            transition: all 0.2s;
+        }
+        .btn-logout:hover { background: #dc3545; color: white; }
+        
+        .input-group { margin-bottom: 20px; }
+        .input-group label { 
+            display: block; 
+            margin-bottom: 6px; 
+            color: #555; 
+            font-size: 13px; 
+            font-weight: 600; 
+        }
+        .input-group input, 
+        .input-group select, 
+        .input-group textarea { 
+            width: 100%; 
+            padding: 12px; 
+            border: 2px solid #e0e0e0; 
+            border-radius: 8px; 
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        .input-group input:focus,
+        .input-group select:focus,
+        .input-group textarea:focus { 
+            outline: none; 
+            border-color: #667eea; 
+        }
+        .input-group textarea { resize: vertical; min-height: 100px; }
+        
+        .post-form { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08); 
+            max-width: 600px;
+        }
+        
+        .modal { 
+            display: none; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0,0,0,0.6); 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 1000;
+            animation: fadeIn 0.2s;
+        }
+        .modal-content { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 12px; 
+            width: 90%; 
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-content h2 { margin-bottom: 20px; color: #333; }
+        .modal-buttons { display: flex; gap: 10px; margin-top: 25px; }
+        
+        .badge { 
+            padding: 4px 12px; 
+            border-radius: 20px; 
+            font-size: 11px; 
+            font-weight: 600; 
+        }
+        .badge-success { background: #d4edda; color: #155724; }
+        .badge-danger { background: #f8d7da; color: #721c24; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        
+        .alert { 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-top: 15px; 
+            font-size: 14px;
+        }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        
+        .empty-state { 
+            text-align: center; 
+            color: #888; 
+            padding: 60px 20px; 
+            font-size: 15px;
+        }
+        .empty-state .icon { font-size: 50px; display: block; margin-bottom: 15px; }
+        
+        .token-display {
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #666;
+            word-break: break-all;
+        }
+        
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+        .stat-card .stat-number {
+            font-size: 32px;
+            font-weight: 700;
+            color: #667eea;
+        }
+        .stat-card .stat-label {
+            font-size: 13px;
+            color: #888;
+            margin-top: 5px;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar { width: 200px; }
+            .main-content { margin-left: 200px; padding: 20px; }
+            .cards-grid { grid-template-columns: 1fr; }
+            .section-header { flex-direction: column; align-items: flex-start; }
+        }
+        
+        @media (max-width: 576px) {
+            .sidebar { 
+                width: 100%; 
+                height: auto; 
+                position: relative; 
+            }
+            .dashboard { flex-direction: column; }
+            .main-content { margin-left: 0; }
+            .nav-menu { display: flex; overflow-x: auto; }
+            .nav-item { padding: 10px 15px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>📱 FB Auto Poster</h2>
+                <small>Dashboard v1.0</small>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item active" data-page="pages">
+                    <span class="nav-icon">📄</span> Page Management
+                </li>
+                <li class="nav-item" data-page="sheets">
+                    <span class="nav-icon">📊</span> Google Sheets
+                </li>
+                <li class="nav-item" data-page="instant-post">
+                    <span class="nav-icon">⚡</span> Instant Post
+                </li>
+                <li class="nav-item" data-page="logs">
+                    <span class="nav-icon">📋</span> Post Logs
+                </li>
+            </ul>
+            <div class="sidebar-footer">
+                <span class="user-email" id="userEmail">Loading...</span>
+                <button onclick="logout()" class="btn-logout">🚪 Logout</button>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <!-- Page Management Section -->
+            <div id="pages" class="page-section active">
+                <div class="section-header">
+                    <h1>📄 Page Management</h1>
+                    <button class="btn btn-primary" onclick="showAddPageModal()">➕ Add New Page</button>
+                </div>
+                <div class="stats-row" id="pageStats"></div>
+                <div id="pagesList" class="cards-grid"></div>
+            </div>
+
+            <!-- Google Sheets Section -->
+            <div id="sheets" class="page-section">
+                <div class="section-header">
+                    <h1>📊 Google Sheets</h1>
+                    <button class="btn btn-primary" onclick="showAddSheetModal()">➕ Add Sheet</button>
+                </div>
+                <div id="sheetsList" class="cards-grid"></div>
+            </div>
+
+            <!-- Instant Post Section -->
+            <div id="instant-post" class="page-section">
+                <div class="section-header">
+                    <h1>⚡ Instant Post</h1>
+                </div>
+                <div class="post-form">
+                    <div class="input-group">
+                        <label>Select Page</label>
+                        <select id="postPageSelect">
+                            <option value="">-- Select a page --</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Post Type</label>
+                        <select id="postType">
+                            <option value="text">📝 Text Only</option>
+                            <option value="image">🖼️ Text + Image</option>
+                            <option value="link">🔗 Link Post</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Message</label>
+                        <textarea id="postMessage" rows="4" placeholder="Write your post content here..."></textarea>
+                    </div>
+                    <div class="input-group" id="imageUrlGroup" style="display:none;">
+                        <label>Image URL</label>
+                        <input type="url" id="postImageUrl" placeholder="https://example.com/image.jpg">
+                    </div>
+                    <div class="input-group" id="linkUrlGroup" style="display:none;">
+                        <label>Link URL</label>
+                        <input type="url" id="postLinkUrl" placeholder="https://example.com">
+                    </div>
+                    <button class="btn btn-primary btn-block" onclick="submitInstantPost()">🚀 Post Now</button>
+                    <div id="postResult"></div>
+                </div>
+            </div>
+
+            <!-- Post Logs Section -->
+            <div id="logs" class="page-section">
+                <div class="section-header">
+                    <h1>📋 Post Logs</h1>
+                </div>
+                <div id="logsList"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Page Modal -->
+    <div id="addPageModal" class="modal">
+        <div class="modal-content">
+            <h2>➕ Add New Facebook Page</h2>
+            <div class="input-group">
+                <label>Page Name *</label>
+                <input type="text" id="pageName" placeholder="My Facebook Page" required>
+            </div>
+            <div class="input-group">
+                <label>Page ID *</label>
+                <input type="text" id="pageId" placeholder="123456789" required>
+            </div>
+            <div class="input-group">
+                <label>Page Access Token *</label>
+                <input type="password" id="pageToken" placeholder="EAA..." required>
+                <small style="color: #888; font-size: 11px;">Token is stored securely and never shared</small>
+            </div>
+            <div class="input-group">
+                <label>Select Google Sheet *</label>
+                <select id="pageSheetSelect">
+                    <option value="">-- Add a sheet first --</option>
+                </select>
+                <small style="color: #e74c3c; font-size: 11px;">⚠️ You must add a Google Sheet before adding a page</small>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-primary" onclick="addPage()">💾 Save Page</button>
+                <button class="btn btn-secondary" onclick="closeModal('addPageModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Sheet Modal -->
+    <div id="addSheetModal" class="modal">
+        <div class="modal-content">
+            <h2>➕ Add Google Sheet</h2>
+            <div class="input-group">
+                <label>Sheet Name *</label>
+                <input type="text" id="sheetName" placeholder="My Content Sheet" required>
+            </div>
+            <div class="input-group">
+                <label>Google Sheet ID *</label>
+                <input type="text" id="sheetId" placeholder="1BxiMVs0XRA5nFMjKvBdBZjgmUUqptlbs74OgvE2upms" required>
+                <small style="color: #888; font-size: 11px;">Copy from sheet URL: docs.google.com/spreadsheets/d/<b>SHEET_ID</b>/edit</small>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-primary" onclick="addSheet()">💾 Save Sheet</button>
+                <button class="btn btn-secondary" onclick="closeModal('addSheetModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Page Modal -->
+    <div id="editPageModal" class="modal">
+        <div class="modal-content">
+            <h2>✏️ Edit Page</h2>
+            <input type="hidden" id="editPageDocId">
+            <div class="input-group">
+                <label>Page Name</label>
+                <input type="text" id="editPageName" required>
+            </div>
+            <div class="input-group">
+                <label>Page ID</label>
+                <input type="text" id="editPageId" required>
+            </div>
+            <div class="input-group">
+                <label>Page Access Token</label>
+                <input type="password" id="editPageToken" required>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-primary" onclick="updatePage()">💾 Update</button>
+                <button class="btn btn-secondary" onclick="closeModal('editPageModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBM-EP3crFurJETR83hFDl2LXCIWHEd4xs",
+            authDomain: "myfacebookpage-90ded.firebaseapp.com",
+            projectId: "myfacebookpage-90ded",
+            storageBucket: "myfacebookpage-90ded.firebasestorage.app",
+            messagingSenderId: "650289088639",
+            appId: "1:650289088639:web:f56959cb4d1e491493174a",
+            measurementId: "G-SRKK9J7V90"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // ==================== AUTH ====================
+        auth.onAuthStateChanged(user => {
+            if (!user) {
+                window.location.href = 'login.html';
+            } else {
+                document.getElementById('userEmail').textContent = user.email;
+                loadPageStats();
+            }
+        });
+
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                auth.signOut().then(() => window.location.href = 'login.html');
+            }
+        }
+
+        // ==================== NAVIGATION ====================
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+                
+                document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+                document.getElementById(this.dataset.page).classList.add('active');
+                
+                if (this.dataset.page === 'pages') { loadPages(); loadPageStats(); }
+                if (this.dataset.page === 'sheets') loadSheets();
+                if (this.dataset.page === 'instant-post') loadPagesForPost();
+                if (this.dataset.page === 'logs') loadLogs();
+            });
+        });
+
+        // ==================== MODALS ====================
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        };
+
+        // ==================== PAGE MANAGEMENT ====================
+        let allPages = [];
+
+        async function loadPageStats() {
+            try {
+                const snapshot = await db.collection('pages').get();
+                const totalPages = snapshot.size;
+                const activePages = snapshot.docs.filter(d => d.data().tokenValid).length;
+                const inactivePages = totalPages - activePages;
+                
+                document.getElementById('pageStats').innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-number">${totalPages}</div>
+                        <div class="stat-label">Total Pages</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${activePages}</div>
+                        <div class="stat-label">Active Pages</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${inactivePages}</div>
+                        <div class="stat-label">Inactive Pages</div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        async function loadPages() {
+            try {
+                const snapshot = await db.collection('pages').orderBy('createdAt', 'desc').get();
+                allPages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderPages();
+            } catch (error) {
+                console.error('Error loading pages:', error);
+                document.getElementById('pagesList').innerHTML = 
+                    '<p class="empty-state"><span class="icon">❌</span>Error loading pages. Check console.</p>';
+            }
+        }
+
+        function renderPages() {
+            const container = document.getElementById('pagesList');
+            if (allPages.length === 0) {
+                container.innerHTML = '<p class="empty-state"><span class="icon">📄</span>No pages added yet.<br><small>Add a Google Sheet first, then add your Facebook pages.</small></p>';
+                return;
+            }
+            
+            container.innerHTML = allPages.map(page => `
+                <div class="card">
+                    <div class="card-header">
+                        <h3>${escapeHtml(page.name)}</h3>
+                        <span class="badge ${page.tokenValid ? 'badge-success' : 'badge-danger'}">
+                            ${page.tokenValid ? '✅ Active' : '❌ Invalid'}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>📋 Page ID:</strong> ${escapeHtml(page.pageId)}</p>
+                        <p><strong>🔑 Token:</strong> <span class="token-display">${page.token.substring(0, 6)}${'•'.repeat(20)}${page.token.slice(-4)}</span></p>
+                        <p><strong>📊 Sheet:</strong> ${escapeHtml(page.sheetName || page.sheetId)}</p>
+                        <p><strong>📅 Added:</strong> ${page.createdAt ? new Date(page.createdAt.seconds * 1000).toLocaleString() : 'N/A'}</p>
+                        <p><strong>🔄 Updated:</strong> ${page.updatedAt ? new Date(page.updatedAt.seconds * 1000).toLocaleString() : 'N/A'}</p>
+                    </div>
+                    <div class="card-footer">
+                        <button class="btn btn-info btn-sm" onclick="checkToken('${page.id}')">🔍 Check Token</button>
+                        <button class="btn btn-warning btn-sm" onclick="editPage('${page.id}')">✏️ Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="removePage('${page.id}')">🗑️ Remove</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function showAddPageModal() {
+            try {
+                const sheetsSnapshot = await db.collection('sheets').get();
+                if (sheetsSnapshot.empty) {
+                    alert('⚠️ No Google Sheets found!\n\nYou must add a Google Sheet before adding a page.\n\nGo to "Google Sheets" menu and add a sheet first.');
+                    return;
+                }
+                const select = document.getElementById('pageSheetSelect');
+                select.innerHTML = '<option value="">-- Select a sheet --</option>' + 
+                    sheetsSnapshot.docs.map(doc => 
+                        `<option value="${doc.id}">${escapeHtml(doc.data().name)}</option>`
+                    ).join('');
+                document.getElementById('addPageModal').style.display = 'flex';
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function addPage() {
+            const name = document.getElementById('pageName').value.trim();
+            const pageId = document.getElementById('pageId').value.trim();
+            const token = document.getElementById('pageToken').value.trim();
+            const sheetId = document.getElementById('pageSheetSelect').value;
+            
+            if (!name || !pageId || !token) {
+                alert('❌ Please fill in all required fields!');
+                return;
+            }
+            
+            if (!sheetId) {
+                alert('❌ Please select a Google Sheet!');
+                return;
+            }
+            
+            try {
+                // Validate Facebook token
+                const fbRes = await fetch(`https://graph.facebook.com/v18.0/me?access_token=${token}`);
+                const fbData = await fbRes.json();
+                if (fbData.error) {
+                    throw new Error('Invalid Facebook token: ' + (fbData.error.message || 'Unknown error'));
+                }
+                
+                const sheetDoc = await db.collection('sheets').doc(sheetId).get();
+                const sheetName = sheetDoc.exists ? sheetDoc.data().name : 'Unknown Sheet';
+                
+                await db.collection('pages').add({
+                    name,
+                    pageId,
+                    token,
+                    sheetId,
+                    sheetName,
+                    tokenValid: true,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                closeModal('addPageModal');
+                document.getElementById('pageName').value = '';
+                document.getElementById('pageId').value = '';
+                document.getElementById('pageToken').value = '';
+                alert('✅ Page added successfully!');
+                loadPages();
+                loadPageStats();
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        async function checkToken(pageId) {
+            const page = allPages.find(p => p.id === pageId);
+            if (!page) return;
+            
+            const button = event.target;
+            button.disabled = true;
+            button.textContent = 'Checking...';
+            
+            try {
+                const res = await fetch(`https://graph.facebook.com/v18.0/me?access_token=${page.token}`);
+                const data = await res.json();
+                const valid = !!data.id;
+                
+                await db.collection('pages').doc(pageId).update({ 
+                    tokenValid: valid,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                alert(valid ? '✅ Token is valid and working!' : '❌ Token is invalid or expired!');
+                loadPages();
+                loadPageStats();
+            } catch {
+                await db.collection('pages').doc(pageId).update({ tokenValid: false });
+                alert('❌ Token check failed! Token may be invalid.');
+                loadPages();
+                loadPageStats();
+            } finally {
+                button.disabled = false;
+                button.textContent = '🔍 Check Token';
+            }
+        }
+
+        function editPage(pageId) {
+            const page = allPages.find(p => p.id === pageId);
+            if (!page) return;
+            
+            document.getElementById('editPageDocId').value = pageId;
+            document.getElementById('editPageName').value = page.name;
+            document.getElementById('editPageId').value = page.pageId;
+            document.getElementById('editPageToken').value = page.token;
+            document.getElementById('editPageModal').style.display = 'flex';
+        }
+
+        async function updatePage() {
+            const docId = document.getElementById('editPageDocId').value;
+            const name = document.getElementById('editPageName').value.trim();
+            const pageId = document.getElementById('editPageId').value.trim();
+            const token = document.getElementById('editPageToken').value.trim();
+            
+            if (!name || !pageId || !token) {
+                alert('❌ Please fill in all fields!');
+                return;
+            }
+            
+            try {
+                await db.collection('pages').doc(docId).update({
+                    name,
+                    pageId,
+                    token,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                closeModal('editPageModal');
+                alert('✅ Page updated successfully!');
+                loadPages();
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        async function removePage(pageId) {
+            const page = allPages.find(p => p.id === pageId);
+            if (!page) return;
+            
+            if (confirm(`Are you sure you want to remove "${page.name}"?\n\nThis action cannot be undone.`)) {
+                try {
+                    await db.collection('pages').doc(pageId).delete();
+                    alert('✅ Page removed successfully!');
+                    loadPages();
+                    loadPageStats();
+                } catch (error) {
+                    alert('❌ Error: ' + error.message);
+                }
+            }
+        }
+
+        // ==================== GOOGLE SHEETS ====================
+        let allSheets = [];
+
+        async function loadSheets() {
+            try {
+                const snapshot = await db.collection('sheets').orderBy('createdAt', 'desc').get();
+                allSheets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderSheets();
+            } catch (error) {
+                console.error('Error loading sheets:', error);
+            }
+        }
+
+        async function renderSheets() {
+            const container = document.getElementById('sheetsList');
+            if (allSheets.length === 0) {
+                container.innerHTML = '<p class="empty-state"><span class="icon">📊</span>No Google Sheets added.<br><small>Add a sheet to get started with page management.</small></p>';
+                return;
+            }
+            
+            // Count pages for each sheet
+            for (let sheet of allSheets) {
+                const pagesSnapshot = await db.collection('pages').where('sheetId', '==', sheet.id).get();
+                sheet.pageCount = pagesSnapshot.size;
+            }
+            
+            container.innerHTML = allSheets.map(sheet => `
+                <div class="card">
+                    <div class="card-header">
+                        <h3>📊 ${escapeHtml(sheet.name)}</h3>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>🆔 Sheet ID:</strong> <span class="token-display">${escapeHtml(sheet.id)}</span></p>
+                        <p><strong>🔗 Connected Pages:</strong> ${sheet.pageCount || 0}</p>
+                        <p><strong>📅 Added:</strong> ${sheet.createdAt ? new Date(sheet.createdAt.seconds * 1000).toLocaleString() : 'N/A'}</p>
+                        <p>
+                            <a href="https://docs.google.com/spreadsheets/d/${sheet.id}" target="_blank" style="color: #667eea; text-decoration: none;">
+                                🔗 Open in Google Sheets →
+                            </a>
+                        </p>
+                    </div>
+                    <div class="card-footer">
+                        <button class="btn btn-danger btn-sm" onclick="removeSheet('${sheet.id}')">🗑️ Remove</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showAddSheetModal() {
+            document.getElementById('addSheetModal').style.display = 'flex';
+        }
+
+        async function addSheet() {
+            const name = document.getElementById('sheetName').value.trim();
+            const sheetId = document.getElementById('sheetId').value.trim();
+            
+            if (!name || !sheetId) {
+                alert('❌ Please fill in all fields!');
+                return;
+            }
+            
+            try {
+                // Check if sheet already exists
+                const existingDoc = await db.collection('sheets').doc(sheetId).get();
+                if (existingDoc.exists) {
+                    alert('⚠️ This Sheet ID already exists!');
+                    return;
+                }
+                
+                await db.collection('sheets').doc(sheetId).set({ 
+                    name,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp() 
+                });
+                
+                closeModal('addSheetModal');
+                document.getElementById('sheetName').value = '';
+                document.getElementById('sheetId').value = '';
+                alert('✅ Google Sheet added successfully!');
+                loadSheets();
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        async function removeSheet(sheetId) {
+            if (confirm('⚠️ Deleting this sheet may affect connected pages.\n\nAre you sure you want to continue?')) {
+                try {
+                    await db.collection('sheets').doc(sheetId).delete();
+                    alert('✅ Sheet removed successfully!');
+                    loadSheets();
+                } catch (error) {
+                    alert('❌ Error: ' + error.message);
+                }
+            }
+        }
+
+        // ==================== INSTANT POST ====================
+        document.getElementById('postType')?.addEventListener('change', function() {
+            document.getElementById('imageUrlGroup').style.display = 
+                this.value === 'image' ? 'block' : 'none';
+            document.getElementById('linkUrlGroup').style.display = 
+                this.value === 'link' ? 'block' : 'none';
+        });
+
+        async function loadPagesForPost() {
+            try {
+                const snapshot = await db.collection('pages').where('tokenValid', '==', true).get();
+                const select = document.getElementById('postPageSelect');
+                
+                if (snapshot.empty) {
+                    select.innerHTML = '<option value="">-- No active pages found --</option>';
+                    return;
+                }
+                
+                select.innerHTML = '<option value="">-- Select a page --</option>' + 
+                    snapshot.docs.map(doc => {
+                        const page = doc.data();
+                        return `<option value="${doc.id}">${escapeHtml(page.name)}</option>`;
+                    }).join('');
+            } catch (error) {
+                console.error('Error loading pages for post:', error);
+            }
+        }
+
+        async function submitInstantPost() {
+            const pageDocId = document.getElementById('postPageSelect').value;
+            const message = document.getElementById('postMessage').value.trim();
+            const postType = document.getElementById('postType').value;
+            const imageUrl = document.getElementById('postImageUrl')?.value.trim();
+            const linkUrl = document.getElementById('postLinkUrl')?.value.trim();
+            const resultDiv = document.getElementById('postResult');
+            
+            if (!pageDocId) {
+                alert('❌ Please select a page!');
+                return;
+            }
+            
+            if (!message && !imageUrl && !linkUrl) {
+                alert('❌ Please enter a message or provide media!');
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="alert alert-info"><span class="loading-spinner"></span> Posting...</div>';
+            
+            try {
+                const pageDoc = await db.collection('pages').doc(pageDocId).get();
+                const page = pageDoc.data();
+                
+                let url, params;
+                
+                if (postType === 'image' && imageUrl) {
+                    url = `https://graph.facebook.com/v18.0/${page.pageId}/photos`;
+                    params = new URLSearchParams({
+                        url: imageUrl,
+                        message: message,
+                        access_token: page.token
+                    });
+                } else if (postType === 'link' && linkUrl) {
+                    url = `https://graph.facebook.com/v18.0/${page.pageId}/feed`;
+                    params = new URLSearchParams({
+                        link: linkUrl,
+                        message: message,
+                        access_token: page.token
+                    });
+                } else {
+                    url = `https://graph.facebook.com/v18.0/${page.pageId}/feed`;
+                    params = new URLSearchParams({
+                        message: message,
+                        access_token: page.token
+                    });
+                }
+                
+                const res = await fetch(url, { method: 'POST', body: params });
+                const result = await res.json();
+                
+                if (result.id) {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            ✅ <strong>Post Successful!</strong><br>
+                            Post ID: ${result.id}<br>
+                            Page: ${escapeHtml(page.name)}<br>
+                            Time: ${new Date().toLocaleString()}
+                        </div>`;
+                    
+                    // Save log
+                    await db.collection('post_logs').add({
+                        pageId: page.pageId,
+                        pageName: page.name,
+                        postId: result.id,
+                        message: message,
+                        type: postType,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    document.getElementById('postMessage').value = '';
+                    document.getElementById('postImageUrl').value = '';
+                    document.getElementById('postLinkUrl').value = '';
+                } else {
+                    throw new Error(result.error?.message || 'Unknown error');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        ❌ <strong>Post Failed!</strong><br>
+                        ${error.message}
+                    </div>`;
+            }
+        }
+
+        // ==================== POST LOGS ====================
+        async function loadLogs() {
+            const container = document.getElementById('logsList');
+            
+            try {
+                const snapshot = await db.collection('post_logs')
+                    .orderBy('timestamp', 'desc')
+                    .limit(50)
+                    .get();
+                
+                if (snapshot.empty) {
+                    container.innerHTML = '<p class="empty-state"><span class="icon">📋</span>No post logs yet.</p>';
+                    return;
+                }
+                
+                container.innerHTML = `
+                    <div class="cards-grid">
+                        ${snapshot.docs.map(doc => {
+                            const log = doc.data();
+                            const time = log.timestamp ? new Date(log.timestamp.seconds * 1000).toLocaleString() : 'N/A';
+                            return `
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h3>${escapeHtml(log.pageName)}</h3>
+                                        <span class="badge badge-success">✅ Posted</span>
+                                    </div>
+                                    <div class="card-body">
+                                        <p><strong>📝 Message:</strong> ${escapeHtml(log.message?.substring(0, 100) || 'N/A')}${log.message?.length > 100 ? '...' : ''}</p>
+                                        <p><strong>🆔 Post ID:</strong> ${log.postId}</p>
+                                        <p><strong>📅 Posted:</strong> ${time}</p>
+                                        <p><strong>📋 Type:</strong> ${log.type || 'text'}</p>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = '<p class="empty-state">❌ Error loading logs.</p>';
+                console.error('Error loading logs:', error);
+            }
+        }
+
+        // ==================== UTILS ====================
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ==================== INITIAL LOAD ====================
+        loadPages();
+        loadPageStats();
+        loadSheets();
+        loadPagesForPost();
+    </script>
+</body>
+</html>
