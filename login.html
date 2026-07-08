@@ -9,91 +9,29 @@
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            min-height: 100vh;
+            display: flex; align-items: center; justify-content: center; min-height: 100vh;
         }
         .auth-container { width: 100%; max-width: 420px; padding: 20px; }
         .auth-card { 
-            background: white; 
-            padding: 40px; 
-            border-radius: 15px; 
+            background: white; padding: 40px; border-radius: 15px; 
             box-shadow: 0 20px 60px rgba(0,0,0,0.3); 
         }
-        .auth-card h1 { 
-            font-size: 28px; 
-            color: #333; 
-            margin-bottom: 5px; 
-            text-align: center; 
-        }
-        .auth-card p { 
-            color: #666; 
-            margin-bottom: 30px; 
-            text-align: center; 
-            font-size: 14px;
-        }
+        .auth-card h1 { font-size: 28px; color: #333; margin-bottom: 5px; text-align: center; }
+        .auth-card p { color: #666; margin-bottom: 30px; text-align: center; font-size: 14px; }
         .input-group { margin-bottom: 20px; }
-        .input-group label { 
-            display: block; 
-            margin-bottom: 8px; 
-            color: #555; 
-            font-size: 14px; 
-            font-weight: 600; 
-        }
+        .input-group label { display: block; margin-bottom: 8px; color: #555; font-size: 14px; font-weight: 600; }
         .input-group input { 
-            width: 100%; 
-            padding: 14px; 
-            border: 2px solid #e0e0e0; 
-            border-radius: 8px; 
-            font-size: 14px;
-            transition: border-color 0.3s;
+            width: 100%; padding: 14px; border: 2px solid #e0e0e0; border-radius: 8px; 
+            font-size: 14px; transition: border-color 0.3s;
         }
-        .input-group input:focus { 
-            outline: none; 
-            border-color: #667eea; 
-        }
-        .btn { 
-            padding: 14px 20px; 
-            border: none; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            font-size: 16px; 
-            font-weight: 600;
-            transition: all 0.3s; 
-        }
-        .btn-primary { 
-            background: #667eea; 
-            color: white; 
-            width: 100%; 
-        }
-        .btn-primary:hover { 
-            background: #5a6fd6; 
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-        .auth-link { 
-            text-align: center; 
-            margin-top: 20px; 
-            font-size: 14px; 
-            color: #666; 
-        }
-        .auth-link a { 
-            color: #667eea; 
-            text-decoration: none; 
-            font-weight: 600; 
-        }
+        .input-group input:focus { outline: none; border-color: #667eea; }
+        .btn { padding: 14px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; transition: all 0.3s; }
+        .btn-primary { background: #667eea; color: white; width: 100%; }
+        .btn-primary:hover { background: #5a6fd6; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .auth-link { text-align: center; margin-top: 20px; font-size: 14px; color: #666; }
+        .auth-link a { color: #667eea; text-decoration: none; font-weight: 600; }
         .auth-link a:hover { text-decoration: underline; }
-        .error-message {
-            background: #ffe0e0;
-            color: #d32f2f;
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            text-align: center;
-            display: none;
-            font-size: 14px;
-        }
+        .error-message { background: #ffe0e0; color: #d32f2f; padding: 10px; border-radius: 8px; margin-bottom: 20px; text-align: center; display: none; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -132,34 +70,26 @@
             appId: "1:650289088639:web:f56959cb4d1e491493174a",
             measurementId: "G-SRKK9J7V90"
         };
-
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
 
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                window.location.href = 'index.html';
-            }
-        });
+        auth.onAuthStateChanged(user => { if (user) window.location.href = 'index.html'; });
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             const errorDiv = document.getElementById('errorMessage');
-            
             errorDiv.style.display = 'none';
-            
             try {
                 await auth.signInWithEmailAndPassword(email, password);
                 window.location.href = 'index.html';
             } catch (error) {
-                let message = 'Login failed. Please try again.';
-                if (error.code === 'auth/user-not-found') message = 'No account found with this email.';
+                let message = 'Login failed.';
+                if (error.code === 'auth/user-not-found') message = 'No account found.';
                 else if (error.code === 'auth/wrong-password') message = 'Incorrect password.';
-                else if (error.code === 'auth/invalid-email') message = 'Invalid email address.';
-                else if (error.code === 'auth/too-many-requests') message = 'Too many attempts. Please try later.';
-                
+                else if (error.code === 'auth/invalid-email') message = 'Invalid email.';
+                else if (error.code === 'auth/too-many-requests') message = 'Too many attempts. Try later.';
                 errorDiv.textContent = message;
                 errorDiv.style.display = 'block';
             }
@@ -167,40 +97,32 @@
 
         document.getElementById('registerLink').addEventListener('click', async (e) => {
             e.preventDefault();
-            const email = prompt('Enter your email address to register:');
+            const email = prompt('Enter your email:');
             if (!email) return;
-            
-            const password = prompt('Create a password (minimum 6 characters):');
-            if (!password || password.length < 6) {
-                alert('Password must be at least 6 characters long.');
-                return;
-            }
-            
+            const password = prompt('Create password (6+ characters):');
+            if (!password || password.length < 6) { alert('Password must be 6+ characters.'); return; }
             try {
                 await auth.createUserWithEmailAndPassword(email, password);
-                alert('✅ Account created successfully! You can now sign in.');
+                alert('✅ Account created! You can now sign in.');
                 document.getElementById('email').value = email;
                 document.getElementById('password').value = '';
             } catch (error) {
-                let message = 'Registration failed.';
-                if (error.code === 'auth/email-already-in-use') message = 'This email is already registered.';
-                else if (error.code === 'auth/invalid-email') message = 'Invalid email address.';
-                else if (error.code === 'auth/weak-password') message = 'Password is too weak.';
-                alert('❌ ' + message);
+                let msg = 'Registration failed.';
+                if (error.code === 'auth/email-already-in-use') msg = 'Email already registered.';
+                else if (error.code === 'auth/invalid-email') msg = 'Invalid email.';
+                else if (error.code === 'auth/weak-password') msg = 'Password too weak.';
+                alert('❌ ' + msg);
             }
         });
 
         document.getElementById('forgotPassword').addEventListener('click', async (e) => {
             e.preventDefault();
-            const email = prompt('Enter your email to reset password:');
+            const email = prompt('Enter email to reset password:');
             if (!email) return;
-            
             try {
                 await auth.sendPasswordResetEmail(email);
-                alert('✅ Password reset email sent! Check your inbox.');
-            } catch (error) {
-                alert('❌ Error: ' + error.message);
-            }
+                alert('✅ Reset email sent! Check your inbox.');
+            } catch (error) { alert('❌ ' + error.message); }
         });
     </script>
 </body>
